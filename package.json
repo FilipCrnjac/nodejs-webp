@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "imagemin": "^7.0.1",
     "imagemin-web": "^1.1.1",

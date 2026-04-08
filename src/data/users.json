@@ -2,12 +2,12 @@
   {
     "id": 1,
     "username": "user1",
-    "password": "password1"
+    "passwordHash": "$2b$10$m1IdFNOMldw0sU4Iws66aeQ8DiyNOiXSalj7Fg7lxSKMhQUbZ8IX6"
   },
   {
     "id": 13,
     "username": "user13",
-    "password": "password13"
+    "passwordHash": "$2b$10$7h4JDT3adfiQ6sea3lHgXOJzP2hcEVpvXLKNHUHrFQhySw9j56Z/6"
   }
 ]
 
