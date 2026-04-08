@@ -212,6 +212,65 @@ router.get('/', function(req: Request, res: Response) {
         .toast.error { background: #c62828; }
         .toast.info { background: #546e7a; }
 
+        .quality-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+          margin-bottom: 20px;
+        }
+
+        .quality-card {
+          border-radius: 10px;
+          padding: 16px;
+          border: 1px solid #e5e7eb;
+        }
+
+        .quality-card.lossy {
+          background: #fff8f0;
+          border-color: #f7dec3;
+        }
+
+        .quality-card.lossless {
+          background: #f3fff6;
+          border-color: #d9f0df;
+        }
+
+        .quality-title {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 10px;
+          color: #333;
+          font-size: 15px;
+          font-weight: 600;
+        }
+
+        .quality-help {
+          color: #666;
+          font-size: 13px;
+          line-height: 1.5;
+          margin-bottom: 12px;
+        }
+
+        .quality-value {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 44px;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.85);
+          font-size: 12px;
+          font-weight: 700;
+          color: #333;
+        }
+
+        .quality-card input[type="range"] {
+          width: 100%;
+          accent-color: #667eea;
+        }
+
         @media (max-width: 600px) {
           .header {
             padding: 30px 15px;
@@ -228,6 +287,10 @@ router.get('/', function(req: Request, res: Response) {
 
           .content {
             padding: 25px 15px;
+          }
+
+          .quality-grid {
+            grid-template-columns: 1fr;
           }
         }
       </style>
@@ -325,6 +388,27 @@ router.get('/', function(req: Request, res: Response) {
                 <input id="home-upload-file" type="file" name="myImage" accept="image/*" required
                        style="display: block; width: 100%; padding: 12px; border: 2px dashed #667eea; border-radius: 6px; cursor: pointer;" />
               </div>
+
+              <div class="quality-grid">
+                <div class="quality-card lossy">
+                  <div class="quality-title">
+                    <span>📊 Lossy quality</span>
+                    <span id="home-lossy-quality-value" class="quality-value">75</span>
+                  </div>
+                  <p class="quality-help">Smaller file size with very good visual quality for web delivery.</p>
+                  <input id="home-lossy-quality" type="range" name="lossyQuality" min="1" max="100" value="75" />
+                </div>
+
+                <div class="quality-card lossless">
+                  <div class="quality-title">
+                    <span>🎨 Lossless quality</span>
+                    <span id="home-lossless-quality-value" class="quality-value">75</span>
+                  </div>
+                  <p class="quality-help">Keeps exact image fidelity while still producing a WebP variant.</p>
+                  <input id="home-lossless-quality" type="range" name="losslessQuality" min="1" max="100" value="75" />
+                </div>
+              </div>
+
               <button id="home-upload-submit" type="submit" class="cta-button" style="width: 100%; text-align: center;">Upload & Optimize</button>
             </form>
             <p id="upload-status" style="display: none; margin-top: 12px; font-size: 14px;"></p>
@@ -443,6 +527,8 @@ router.get('/', function(req: Request, res: Response) {
           const note = document.getElementById('upload-login-note');
           const fileInput = document.getElementById('home-upload-file');
           const submitButton = document.getElementById('home-upload-submit');
+          const lossyQualityInput = document.getElementById('home-lossy-quality');
+          const losslessQualityInput = document.getElementById('home-lossless-quality');
           const status = document.getElementById('upload-status');
 
           if (note) {
@@ -461,10 +547,33 @@ router.get('/', function(req: Request, res: Response) {
             submitButton.style.cursor = hasToken ? 'pointer' : 'not-allowed';
           }
 
+          if (lossyQualityInput) {
+            lossyQualityInput.disabled = !hasToken;
+          }
+
+          if (losslessQualityInput) {
+            losslessQualityInput.disabled = !hasToken;
+          }
+
           if (status && !hasToken) {
             status.style.display = 'none';
             status.textContent = '';
           }
+        }
+
+        function syncHomeQualityLabel(inputId, outputId) {
+          const input = document.getElementById(inputId);
+          const output = document.getElementById(outputId);
+          if (!input || !output) {
+            return;
+          }
+
+          const update = () => {
+            output.textContent = input.value;
+          };
+
+          input.addEventListener('input', update);
+          update();
         }
 
         async function register() {
@@ -611,6 +720,9 @@ router.get('/', function(req: Request, res: Response) {
         if (homeUploadForm) {
           homeUploadForm.addEventListener('submit', submitUploadFromHomeTab);
         }
+
+        syncHomeQualityLabel('home-lossy-quality', 'home-lossy-quality-value');
+        syncHomeQualityLabel('home-lossless-quality', 'home-lossless-quality-value');
 
         const initialTab = new URLSearchParams(window.location.search).get('tab') || 'home';
         setActiveTab(initialTab);
