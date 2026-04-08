@@ -210,7 +210,7 @@ test('GET /images/:id/json forbids access to another users folder', async () => 
 test('GET /images/:id/json returns files for the authenticated folder', async () => {
   fs.mkdirSync(path.join(uploadsRoot, '13'), { recursive: true });
   fs.writeFileSync(path.join(uploadsRoot, '13', 'sample.jpeg'), 'demo');
-  fs.writeFileSync(path.join(uploadsRoot, '13', 'sample_75-lossy.webp'), 'demo');
+  fs.writeFileSync(path.join(uploadsRoot, '13', '75-lossy_sample.webp'), 'demo');
 
   const { token } = await login('user13', 'password13');
 
@@ -223,7 +223,7 @@ test('GET /images/:id/json returns files for the authenticated folder', async ()
 
   assert.equal(response.status, 200);
   assert.deepEqual(body, {
-    images: ['sample.jpeg', 'sample_75-lossy.webp']
+    images: ['75-lossy_sample.webp', 'sample.jpeg']
   });
 });
 
@@ -295,9 +295,58 @@ test('POST /uploads stores the original image and two webp variants', async () =
   assert.equal(response.status, 200);
   assert.match(html, /View images/);
   assert.equal(files.length, 3);
-  assert.match(files[0], /pixel-\d+\.png/);
-  assert.match(files[1], /pixel-\d+_75-lossless\.webp/);
-  assert.match(files[2], /pixel-\d+_75-lossy\.webp/);
+  assert.ok(files.some(file => /pixel-\d+\.png/.test(file)));
+  assert.ok(files.some(file => /75-lossless_pixel-\d+\.webp/.test(file)));
+  assert.ok(files.some(file => /75-lossy_pixel-\d+\.webp/.test(file)));
+});
+
+test('POST /uploads avoids overwrite for repeated uploads and prefixes quality in variant names', async () => {
+  const { token } = await login('user1', 'password1');
+  const originalNow = Date.now;
+  Date.now = () => 1234567890;
+
+  try {
+    const firstFormData = new FormData();
+    firstFormData.set('myImage', createImageFile());
+    firstFormData.set('lossyQuality', '80');
+    firstFormData.set('losslessQuality', '90');
+
+    const secondFormData = new FormData();
+    secondFormData.set('myImage', createImageFile());
+    secondFormData.set('lossyQuality', '80');
+    secondFormData.set('losslessQuality', '90');
+
+    const firstResponse = await fetch(createUrl('/uploads'), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: firstFormData,
+    });
+
+    const secondResponse = await fetch(createUrl('/uploads'), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: secondFormData,
+    });
+
+    assert.equal(firstResponse.status, 200);
+    assert.equal(secondResponse.status, 200);
+
+    const userDirectory = path.join(uploadsRoot, '1');
+    const files = fs.readdirSync(userDirectory).sort();
+
+    assert.ok(files.includes('pixel-1234567890.png'));
+    assert.ok(files.includes('pixel-1234567890-1.png'));
+    assert.ok(files.includes('80-lossy_pixel-1234567890.webp'));
+    assert.ok(files.includes('90-lossless_pixel-1234567890.webp'));
+    assert.ok(files.includes('80-lossy_pixel-1234567890-1.webp'));
+    assert.ok(files.includes('90-lossless_pixel-1234567890-1.webp'));
+  } finally {
+    Date.now = originalNow;
+  }
 });
 
 

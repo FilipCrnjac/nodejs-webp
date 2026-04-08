@@ -103,10 +103,11 @@ router.delete('/:id/files/:name', async function(req: Request, res: Response) {
 
   try {
     const baseName = path.parse(decodedName).name;
+    const filesInFolder = await fs.readdir(folderPath);
+    const variantPattern = new RegExp(`^(?:\\d+-(?:lossy|lossless)_${escapeRegExp(baseName)}|${escapeRegExp(baseName)}_\\d+-(?:lossy|lossless))\\.webp$`);
     const toDelete = [
       fullPath,
-      path.join(folderPath, `${baseName}_75-lossy.webp`),
-      path.join(folderPath, `${baseName}_75-lossless.webp`),
+      ...filesInFolder.filter(file => variantPattern.test(file)).map(file => path.join(folderPath, file)),
     ];
 
     await Promise.all(
@@ -144,5 +145,9 @@ function validateRequestedFolder(req: AuthenticatedRequest, res: Response): numb
   }
 
   return folderId;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 

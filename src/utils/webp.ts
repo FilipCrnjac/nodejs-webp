@@ -29,6 +29,11 @@ class Webp {
       lossless: true
     });
   }
+
+  static buildVariantFileName(sourceFileName: string, quality: number, label: 'lossy' | 'lossless'): string {
+    const parsedPath = path.parse(sourceFileName);
+    return `${quality}-${label}_${parsedPath.name}.webp`;
+  }
 }
 
 async function convert(
@@ -55,8 +60,8 @@ async function convert(
       throw new Error(`Converted ${label} image is missing output path.`);
     }
 
-    const parsedPath = path.parse(result[0].destinationPath);
-    const outputPath = path.join(destination, `${parsedPath.name}_${quality}-${label}.webp`);
+    const parsedPath = path.parse(inputImage);
+    const outputPath = path.join(destination, Webp.buildVariantFileName(`${parsedPath.name}${parsedPath.ext}`, quality, label as 'lossy' | 'lossless'));
     FileHelperSync.rename(result[0].destinationPath, outputPath);
 
     return outputPath;

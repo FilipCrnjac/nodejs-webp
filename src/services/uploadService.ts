@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 
 import { Request, Response } from 'express';
@@ -27,7 +28,8 @@ class UploadService {
         },
         filename(request, file, cb) {
           const parsedFile = path.parse(file.originalname);
-          cb(null, parsedFile.name + '-' + Date.now() + parsedFile.ext);
+          const baseName = `${parsedFile.name}-${Date.now()}`;
+          cb(null, createAvailableFileName(`${process.env.UPLOADS_FOLDER}/${userId}`, baseName, parsedFile.ext));
         }
       });
 
@@ -48,7 +50,7 @@ class UploadService {
       multerUpload(req, res, async err => {
         if (err) {
           console.log(err);
-          cleanupUploadArtifacts(req.file && req.file.path, defaultQuality);
+          cleanupUploadArtifacts(req.file && req.file.path, [defaultQuality, defaultQuality]);
           return reject(mapUploadError(err));
         }
 
@@ -56,13 +58,16 @@ class UploadService {
           return reject(createHttpError(400, 'Saving image failed. Please double check selected image.'));
         }
 
+        let lossyQuality = defaultQuality;
+        let losslessQuality = defaultQuality;
+
         try {
           // Parse quality settings from form data
           const lossyQualityStr = (req.body?.lossyQuality || String(defaultQuality)).toString().trim();
           const losslessQualityStr = (req.body?.losslessQuality || String(defaultQuality)).toString().trim();
 
-          const lossyQuality = Math.max(1, Math.min(100, parseInt(lossyQualityStr, 10) || defaultQuality));
-          const losslessQuality = Math.max(1, Math.min(100, parseInt(losslessQualityStr, 10) || defaultQuality));
+          lossyQuality = Math.max(1, Math.min(100, parseInt(lossyQualityStr, 10) || defaultQuality));
+          losslessQuality = Math.max(1, Math.min(100, parseInt(losslessQualityStr, 10) || defaultQuality));
 
           console.log(`📊 Upload quality settings - Lossy: ${lossyQuality}, Lossless: ${losslessQuality}`);
 
@@ -376,7 +381,7 @@ class UploadService {
           resolve(html);
         } catch (conversionError) {
           console.log(conversionError);
-          cleanupUploadArtifacts(req.file.path, defaultQuality);
+          cleanupUploadArtifacts(req.file.path, [lossyQuality, losslessQuality]);
           reject(createHttpError(500, 'Image conversion failed. Please try again.'));
         }
       });
@@ -396,7 +401,7 @@ function logExecutionTime(start: [number, number], message: string): void {
   console.info(`${message} execution time: ${end[0]}s ${(end[1] / 1000000).toFixed(2)}ms`);
 }
 
-function cleanupUploadArtifacts(originalFilePath: string | undefined, qualityValue: number): void {
+function cleanupUploadArtifacts(originalFilePath: string | undefined, qualityValues: number[]): void {
   if (!originalFilePath) {
     return;
   }
@@ -404,8 +409,12 @@ function cleanupUploadArtifacts(originalFilePath: string | undefined, qualityVal
   const parsedFile = path.parse(originalFilePath);
   const derivedFiles = [
     originalFilePath,
-    path.join(parsedFile.dir, `${parsedFile.name}_${qualityValue}-lossy.webp`),
-    path.join(parsedFile.dir, `${parsedFile.name}_${qualityValue}-lossless.webp`),
+    ...qualityValues.flatMap(quality => [
+      path.join(parsedFile.dir, Webp.buildVariantFileName(`${parsedFile.name}${parsedFile.ext}`, quality, 'lossy')),
+      path.join(parsedFile.dir, Webp.buildVariantFileName(`${parsedFile.name}${parsedFile.ext}`, quality, 'lossless')),
+      path.join(parsedFile.dir, `${parsedFile.name}_${quality}-lossy.webp`),
+      path.join(parsedFile.dir, `${parsedFile.name}_${quality}-lossless.webp`),
+    ]),
   ];
 
   derivedFiles.forEach(filePath => {
@@ -416,6 +425,20 @@ function cleanupUploadArtifacts(originalFilePath: string | undefined, qualityVal
       console.log(`Cleanup skipped for ${filePath}`, message);
     }
   });
+}
+
+function createAvailableFileName(directory: string, baseName: string, extension: string): string {
+  let suffix = 0;
+
+  while (true) {
+    const candidateName = suffix === 0 ? `${baseName}${extension}` : `${baseName}-${suffix}${extension}`;
+    const candidatePath = path.join(directory, candidateName);
+    if (!fs.existsSync(candidatePath)) {
+      return candidateName;
+    }
+
+    suffix += 1;
+  }
 }
 
 function mapUploadError(err: unknown): HttpError {
