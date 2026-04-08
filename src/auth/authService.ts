@@ -1,4 +1,5 @@
-import fs from 'fs';
+import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 
@@ -73,7 +74,7 @@ class AuthService {
 
   private saveUsers(): void {
     const usersFilePath = resolveUsersFilePath();
-    fs.writeFileSync(usersFilePath, JSON.stringify(this.users, null, 2), 'utf8');
+    fsSync.writeFileSync(usersFilePath, JSON.stringify(this.users, null, 2), 'utf8');
   }
 
   async refresh(refreshToken: string): Promise<LoginResult> {
@@ -177,7 +178,7 @@ class AuthService {
 
   private loadUsers(): UserRecord[] {
     const usersFilePath = resolveUsersFilePath();
-    const raw = fs.readFileSync(usersFilePath, 'utf8');
+    const raw = fsSync.readFileSync(usersFilePath, 'utf8');
     const parsed = JSON.parse(raw) as UserRecord[];
     return parsed;
   }
@@ -189,7 +190,7 @@ function resolveUsersFilePath(): string {
     path.join(__dirname, '../data/users.json'),
   ];
 
-  const found = candidates.find(candidate => fs.existsSync(candidate));
+  const found = candidates.find(candidate => fsSync.existsSync(candidate));
   if (!found) {
     throw new Error('Users file not found.');
   }

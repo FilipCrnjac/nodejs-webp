@@ -1,4 +1,5 @@
-import fs from 'fs';
+import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 
 import express, { Request, Response } from 'express';
@@ -48,7 +49,7 @@ router.get('/:id/json', function(req: Request, res: Response) {
 });
 
 /* GET single image file from selected folder (authorized user only) */
-router.get('/:id/files/:name', function(req: Request, res: Response) {
+router.get('/:id/files/:name', async function(req: Request, res: Response) {
   const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
   if (!folderId) {
     return null;
@@ -67,15 +68,17 @@ router.get('/:id/files/:name', function(req: Request, res: Response) {
   }
 
   const fullPath = path.join(process.env.UPLOADS_FOLDER!, `${folderId}`, decodedName);
-  if (!fs.existsSync(fullPath)) {
+
+  try {
+    await fs.access(fullPath);
+    return res.sendFile(fullPath);
+  } catch {
     return res.status(404).json({ error: true, message: 'Non existing file!' });
   }
-
-  return res.sendFile(fullPath);
 });
 
 /* DELETE image file and its variants from selected folder */
-router.delete('/:id/files/:name', function(req: Request, res: Response) {
+router.delete('/:id/files/:name', async function(req: Request, res: Response) {
   const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
   if (!folderId) {
     return null;
@@ -92,7 +95,9 @@ router.delete('/:id/files/:name', function(req: Request, res: Response) {
   const fullPath = path.join(process.env.UPLOADS_FOLDER!, String(folderId), decodedName);
   const folderPath = path.dirname(fullPath);
 
-  if (!fs.existsSync(fullPath)) {
+  try {
+    await fs.access(fullPath);
+  } catch {
     return res.status(404).json({ error: true, message: 'File not found!' });
   }
 
@@ -104,11 +109,13 @@ router.delete('/:id/files/:name', function(req: Request, res: Response) {
       path.join(folderPath, `${baseName}_75-lossless.webp`),
     ];
 
-    toDelete.forEach(filePath => {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    });
+    await Promise.all(
+      toDelete.map(filePath =>
+        fs.unlink(filePath).catch(() => {
+          // File might not exist, that's ok
+        })
+      )
+    );
 
     return res.json({ success: true, message: 'File deleted.' });
   } catch (error) {
@@ -131,7 +138,7 @@ function validateRequestedFolder(req: AuthenticatedRequest, res: Response): numb
     return null;
   }
 
-  if (!fs.existsSync(`${process.env.UPLOADS_FOLDER!}/${folderId}`)) {
+  if (!fsSync.existsSync(`${process.env.UPLOADS_FOLDER!}/${folderId}`)) {
     res.status(404).json({ error: true, message: "Non existing folder!"});
     return null;
   }
