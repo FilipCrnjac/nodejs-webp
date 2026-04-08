@@ -74,6 +74,49 @@ router.get('/:id/files/:name', function(req: Request, res: Response) {
   return res.sendFile(fullPath);
 });
 
+/* DELETE image file and its variants from selected folder */
+router.delete('/:id/files/:name', function(req: Request, res: Response) {
+  const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
+  if (!folderId) {
+    return null;
+  }
+
+  const fileName = path.basename(String(req.params.name));
+  let decodedName = '';
+  try {
+    decodedName = decodeURIComponent(fileName);
+  } catch (e) {
+    return res.status(400).json({ error: true, message: 'Invalid file name!' });
+  }
+
+  const fullPath = path.join(process.env.UPLOADS_FOLDER!, String(folderId), decodedName);
+  const folderPath = path.dirname(fullPath);
+
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: true, message: 'File not found!' });
+  }
+
+  try {
+    const baseName = path.parse(decodedName).name;
+    const toDelete = [
+      fullPath,
+      path.join(folderPath, `${baseName}_75-lossy.webp`),
+      path.join(folderPath, `${baseName}_75-lossless.webp`),
+    ];
+
+    toDelete.forEach(filePath => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
+
+    return res.json({ success: true, message: 'File deleted.' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: true, message: 'Failed to delete file.' });
+  }
+});
+
 export = router;
 
 function validateRequestedFolder(req: AuthenticatedRequest, res: Response): number | null {

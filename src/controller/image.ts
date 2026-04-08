@@ -123,11 +123,28 @@ class Image {
             const lb = document.getElementById('lightbox');
             document.getElementById('lightbox-img').src = url;
             document.getElementById('lightbox-caption').textContent = name;
+            document.getElementById('lightbox-filename').textContent = name;
             lb.classList.add('open');
           }
           function closeLightbox() {
             document.getElementById('lightbox').classList.remove('open');
             document.getElementById('lightbox-img').src = '';
+          }
+          async function deleteImage() {
+            const name = document.getElementById('lightbox-filename').textContent;
+            if (!confirm('Delete ' + name + ' and its WebP variants?')) return;
+            const encoded = encodeURIComponent(name);
+            const token = localStorage.getItem('access_token') || '';
+            const response = await fetch('/images/${folderId}/files/' + encoded, {
+              method: 'DELETE',
+              headers: token ? { Authorization: 'Bearer ' + token } : {}
+            });
+            if (response.ok) {
+              alert('Deleted');
+              location.reload();
+            } else {
+              alert('Delete failed');
+            }
           }
           document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
         </script>
@@ -135,6 +152,10 @@ class Image {
           <span id="lightbox-close" onclick="closeLightbox()">&times;</span>
           <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
           <div id="lightbox-caption"></div>
+          <div style="margin-top: 10px;">
+            <button onclick="deleteImage()" style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete</button>
+          </div>
+          <span id="lightbox-filename" style="display:none;"></span>
         </div>
         <h1>Path: /images/${folderId}/html</h1>
         <h2><a href="/">HOME</a></h2><br>
