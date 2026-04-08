@@ -45,18 +45,17 @@ class Upload {
         async function submitUploadPhotoForm(event){
           event.preventDefault();
           const token = document.getElementsByName("token")[0].value.trim();
-          if (!token) {
-            alert('Provide bearer token from /auth/login first.');
-            return;
-          }
 
           const uploadPhotoForm = document.getElementById('uploadPhotoForm');
           const formData = new FormData(uploadPhotoForm);
+          const headers = {};
+          if (token) {
+            headers.Authorization = 'Bearer ' + token;
+          }
+
           const response = await fetch('/uploads', {
             method: 'POST',
-            headers: {
-              Authorization: 'Bearer ' + token
-            },
+            headers,
             body: formData
           });
           const body = await response.text();
@@ -64,13 +63,19 @@ class Upload {
           document.write(body);
           document.close();
         }
+
+        window.addEventListener('DOMContentLoaded', () => {
+          const savedToken = localStorage.getItem('access_token') || '';
+          const tokenInput = document.getElementsByName("token")[0];
+          tokenInput.value = savedToken;
+        });
       </script>
         <h1>Path: /uploads</h1>
         <h2><a href="/">HOME</a></h2><br>
         <div>
         <form id = "uploadPhotoForm" action="" enctype="multipart/form-data" method="POST" onsubmit="submitUploadPhotoForm(event)"> 
           <label for="token" class="pad">Bearer Token</label><br>
-          <input type="text" name="token" class="pad" placeholder="eyJhb..." style="width: 100%"><br>
+          <input type="text" name="token" class="pad" placeholder="optional when logged in via /login" style="width: 100%"><br>
           <input type="file" name="myImage" class="pad" accept="image/*" /><br>
           <input type="submit" class="pad" value="Upload Photo"/>
         </form>
