@@ -286,13 +286,13 @@ router.get('/', function(req: Request, res: Response) {
             </div>
 
             <div style="margin-top: 24px; display: flex; gap: 10px;">
-              <button class="cta-button" onclick="login()" style="flex: 1; text-align: center;">Sign In</button>
+              <button id="sign-in-btn" class="cta-button" onclick="login()" style="flex: 1; text-align: center;">Sign In</button>
               <button class="cta-button" onclick="register()" style="flex: 1; text-align: center; background: #764ba2;">Register</button>
             </div>
 
             <div style="margin-top: 16px; display: flex; gap: 10px;">
               <button class="cta-button" onclick="refreshToken()" style="flex: 1; background: #888;">Refresh Token</button>
-              <button class="cta-button" onclick="logout()" style="flex: 1; background: #d32f2f;">Sign Out</button>
+              <button id="sign-out-btn" class="cta-button" onclick="logout()" style="flex: 1; background: #d32f2f;">Sign Out</button>
             </div>
           </div>
 
@@ -386,8 +386,20 @@ router.get('/', function(req: Request, res: Response) {
             statusEl.textContent = '✗ Not authenticated';
             statusEl.className = 'status logged-out';
           }
+          updateAuthButtons(Boolean(value));
           updateGalleryLink();
           updateUploadAccess();
+        }
+
+        function updateAuthButtons(isLoggedIn) {
+          const signInButton = document.getElementById('sign-in-btn');
+          const signOutButton = document.getElementById('sign-out-btn');
+          if (signInButton) {
+            signInButton.style.display = isLoggedIn ? 'none' : '';
+          }
+          if (signOutButton) {
+            signOutButton.style.display = isLoggedIn ? '' : 'none';
+          }
         }
 
         function showToast(message, type = 'info') {
