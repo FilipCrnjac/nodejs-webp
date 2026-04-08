@@ -10,7 +10,12 @@ router.get('/', function(req, res, next) {
 });
 
 router.post('/', Auth.isAuthenticated, async (req, res) => {
-  res.type('.html').send(await upload.uploadPhoto(req, res).catch(e => e));
+  try {
+    res.type('.html').send(await upload.uploadPhoto(req, res));
+  } catch (e) {
+    const status = e && e.status ? e.status : 500;
+    res.status(status).type('.html').send(e.message || 'Saving image failed. Please try again.');
+  }
 });
 
 module.exports = router;

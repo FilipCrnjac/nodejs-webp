@@ -2,9 +2,11 @@ const path = require('path');
 const multer = require('multer');
 const Webp = require("./../../src/utils/webp");
 const FileHelperSync = require("./../utils/fileHelperSync");
+const createHttpError = require('./../utils/httpError');
 
-const supportedImageFormats = ["image/png", "image/jpeg"];
+const supportedImageFormats = new Set(["image/png", "image/jpeg"]);
 const quality = 75;
+const maxUploadSizeBytes = 10 * 1024 * 1024;
 
 module.exports = class Upload {
   getUploadsPage() {
@@ -68,64 +70,80 @@ module.exports = class Upload {
       const userId = req.userId;
 
       // create folder if doesn't exists
-      FileHelperSync.createDirectory(`${process.env.UPLOADS_FOLDER}/${userId}`)
+      FileHelperSync.createDirectory(`${process.env.UPLOADS_FOLDER}/${userId}`);
 
       // multer configuration about destination and filename
       const storage = multer.diskStorage({
         destination: function (req, file, cb) {
-          cb(null, `${process.env.UPLOADS_FOLDER}/${userId}`)
+          cb(null, `${process.env.UPLOADS_FOLDER}/${userId}`);
         },
         filename: function (req, file, cb) {
           const parsedFile = path.parse(file.originalname);
-          cb(null, parsedFile.name + '-' + Date.now() + parsedFile.ext)
+          cb(null, parsedFile.name + '-' + Date.now() + parsedFile.ext);
           // or form's input name
           // cb(null, file.fieldname + '-' + Date.now() + parsedFile.ext)
         }
       });
 
-      const multerUpload = multer({ storage }).single('myImage');
+      const multerUpload = multer({
+        storage,
+        limits: {
+          fileSize: maxUploadSizeBytes,
+        },
+        fileFilter: (request, file, cb) => {
+          if (!supportedImageFormats.has(file.mimetype)) {
+            return cb(createHttpError(400, 'Invalid image format. Please double check selected image format.'));
+          }
+
+          return cb(null, true);
+        }
+      }).single('myImage');
+
       multerUpload(req, res, async function (err) {
         if (err) {
           console.log(err);
-          return reject('Saving image failed. Please try again.')
+          cleanupUploadArtifacts(req.file && req.file.path, quality);
+          return reject(mapUploadError(err));
         }
+
         if (!req.file) {
-          console.log(err);
-          return reject('Saving image failed. Please double check selected image.')
-        }
-        if (!supportedImageFormats.includes(req.file.mimetype)) {
-          console.log(err);
-          return reject('Invalid image format. Please double check selected image format.')
+          return reject(createHttpError(400, 'Saving image failed. Please double check selected image.'));
         }
 
-        const startTimeConversion = process.hrtime()
-        /*
-        await runConversionSynchronous(req, quality);
-        logExecutionTime(startTimeConversion, "Synchronous conversion")
-        */
-        await runConvertConcurrently(req, quality);
-        logExecutionTime(startTimeConversion, "Concurrent conversion")
+        try {
+          const startTimeConversion = process.hrtime();
+          /*
+          await runConversionSynchronous(req, quality);
+          logExecutionTime(startTimeConversion, "Synchronous conversion")
+          */
+          await runConvertConcurrently(req, quality);
+          logExecutionTime(startTimeConversion, "Concurrent conversion");
 
-        /*
-        await convertToMultipleQualities(req);
-        logExecutionTime(startTimeConversion, "convertToMultipleQualities conversion")
-        */
+          /*
+          await convertToMultipleQualities(req);
+          logExecutionTime(startTimeConversion, "convertToMultipleQualities conversion")
+          */
 
-        const html = `
-          <!DOCTYPE html>
-          <html lang="en">
-          <head><meta charset="UTF-8"><title>MY APP</title></head>
-          <body>
-            <h1>Path: /uploads?auth=${userId}</h1>
-            <h2>- <a href="/images?auth=${userId}">View images (/images)</a></h2>
-            <h2>- <a href="/uploads?auth=${userId}">Upload again (/uploads)</a></h2>
-          </body>
-          </html>
-        `;
+          const html = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><title>MY APP</title></head>
+            <body>
+              <h1>Path: /uploads?auth=${userId}</h1>
+              <h2>- <a href="/images?auth=${userId}">View images (/images)</a></h2>
+              <h2>- <a href="/uploads?auth=${userId}">Upload again (/uploads)</a></h2>
+            </body>
+            </html>
+          `;
 
-        resolve(html);
+          resolve(html);
+        } catch (conversionError) {
+          console.log(conversionError);
+          cleanupUploadArtifacts(req.file.path, quality);
+          reject(createHttpError(500, 'Image conversion failed. Please try again.'));
+        }
       });
-    })
+    });
   }
 };
 
@@ -153,3 +171,41 @@ function logExecutionTime(start, message) {
   const end = process.hrtime(start);
   console.info(`${message} execution time: ${end[0]}s ${(end[1] / 1000000).toFixed(2)}ms`);
 }
+
+function cleanupUploadArtifacts(originalFilePath, quality) {
+  if (!originalFilePath) {
+    return;
+  }
+
+  const parsedFile = path.parse(originalFilePath);
+  const derivedFiles = [
+    originalFilePath,
+    path.join(parsedFile.dir, `${parsedFile.name}_${quality}-lossy.webp`),
+    path.join(parsedFile.dir, `${parsedFile.name}_${quality}-lossless.webp`),
+  ];
+
+  derivedFiles.forEach(filePath => {
+    try {
+      FileHelperSync.deleteFile(filePath);
+    } catch (e) {
+      console.log(`Cleanup skipped for ${filePath}`, e.message);
+    }
+  });
+}
+
+function mapUploadError(err) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return createHttpError(413, `Image is too large. Max allowed size is ${Math.round(maxUploadSizeBytes / (1024 * 1024))}MB.`);
+    }
+
+    return createHttpError(400, err.message);
+  }
+
+  if (err && err.status) {
+    return err;
+  }
+
+  return createHttpError(500, 'Saving image failed. Please try again.');
+}
+

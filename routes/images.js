@@ -13,48 +13,53 @@ router.get('/', function(req, res, next) {
 
 /* GET uploaded images of selected folder in HTML format */
 router.get('/:id/html', async function(req, res, next) {
-  const folderId = parseInt(req.params.id, 10);
+  const folderId = validateRequestedFolder(req, res);
   if (!folderId) {
-    return res.json({ error: true, message: "Invalid folder id!"});
-  }
-
-  if (folderId !== req.userId) {
-    return res.json({ error: true, message: "Forbidden!"});
-  }
-
-  if (!fs.existsSync(`${process.env.UPLOADS_FOLDER}/${folderId}`)) {
-    return res.json({ error: true, message: "Non existing folder!"});
+    return null;
   }
 
   try {
     return res.type("html").send(await image.getDirectoryHtml(folderId));
   } catch (e) {
     console.log(e);
-    return res.json({ error: true, message: `Couldn't load folder ${folderId} images (HTML).`});
+    return res.status(500).json({ error: true, message: `Couldn't load folder ${folderId} images (HTML).`});
   }
 });
 
 /* GET uploads images in JSON format */
 router.get('/:id/json', async function(req, res, next) {
-  const folderId = parseInt(req.params.id, 10);
+  const folderId = validateRequestedFolder(req, res);
   if (!folderId) {
-    return res.json({ error: true, message: "Invalid folder id!"})
-  }
-
-  if (folderId !== req.userId) {
-    return res.json({ error: true, message: "Forbidden!"});
-  }
-
-  if (!fs.existsSync(`${process.env.UPLOADS_FOLDER}/${folderId}`)) {
-    return res.json({ error: true, message: "Non existing folder!"});
+    return null;
   }
 
   try {
     return res.json(await image.getDirectoryJson(folderId));
   } catch (e) {
     console.log(e);
-    return res.json({ error: true, message: `Couldn't load folder ${folderId} images (JSON).`});
+    return res.status(500).json({ error: true, message: `Couldn't load folder ${folderId} images (JSON).`});
   }
 });
 
 module.exports = router;
+
+function validateRequestedFolder(req, res) {
+  const folderId = parseInt(req.params.id, 10);
+  if (!folderId) {
+    res.status(400).json({ error: true, message: "Invalid folder id!"});
+    return null;
+  }
+
+  if (folderId !== req.userId) {
+    res.status(403).json({ error: true, message: "Forbidden!"});
+    return null;
+  }
+
+  if (!fs.existsSync(`${process.env.UPLOADS_FOLDER}/${folderId}`)) {
+    res.status(404).json({ error: true, message: "Non existing folder!"});
+    return null;
+  }
+
+  return folderId;
+}
+

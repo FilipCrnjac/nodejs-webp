@@ -1,4 +1,4 @@
-const { readdirSync, statSync, existsSync, mkdirSync, renameSync } = require('fs');
+const { readdirSync, statSync, existsSync, mkdirSync, renameSync, unlinkSync } = require('fs');
 const { join } = require('path');
 
 module.exports = class FileHelperSync {
@@ -24,12 +24,22 @@ module.exports = class FileHelperSync {
       return true;
     }
     console.log(`Creating folder synchronously: ${path}`);
-    mkdirSync(path);
+    mkdirSync(path, { recursive: true });
 
     return true;
   }
 
   static rename(oldPath, newPath) {
     return renameSync(oldPath, newPath);
+  }
+
+  static deleteFile(path) {
+    if (!existsSync(path)) {
+      return false;
+    }
+
+    unlinkSync(path);
+
+    return true;
   }
 };
