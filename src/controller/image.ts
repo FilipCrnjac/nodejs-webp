@@ -25,10 +25,12 @@ class Image {
     imageService.getDirectoryFilesWithSize(folderId).forEach(file => {
       const safeFile = encodeURIComponent(file.name);
       const fileUrl = `/images/${folderId}/files/${safeFile}`;
+      const escapedFileName = escapeHtml(file.name);
+      const escapedFileUrl = escapeHtml(fileUrl);
       imagesHtml += `
         <figure class="image-card">
-          <div class="image-wrapper">
-            <img src="${fileUrl}" alt="${file.name}" onload="doneLoading('${file.name}')" onclick="openLightbox('${fileUrl}', '${file.name.replace(/'/g, "\\'")}')" title="Click to enlarge">
+          <div class="image-wrapper" data-image-url="${escapedFileUrl}" data-image-name="${escapedFileName}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
+            <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(file.name)})" title="Click to enlarge">
             <div class="image-overlay">
               <svg class="zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"></circle>
@@ -220,6 +222,7 @@ class Image {
             justify-content: center;
             transition: background 0.3s ease;
             opacity: 0;
+            pointer-events: none;
           }
 
           .image-card:hover .image-overlay {
@@ -467,7 +470,25 @@ class Image {
             console.log("Image [" + name + "] took " + loadTime + "ms to load");
           }
 
+          function openLightboxFromCard(card) {
+            if (!card) {
+              return;
+            }
+
+            openLightbox(card.dataset.imageUrl || '', card.dataset.imageName || '');
+          }
+
+          function handleImageCardKeydown(event, card) {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openLightboxFromCard(card);
+            }
+          }
+
           function openLightbox(url, name) {
+            if (!url) {
+              return;
+            }
             const lb = document.getElementById('lightbox');
             document.getElementById('lightbox-img').src = url;
             document.getElementById('lightbox-caption').textContent = name;
@@ -525,6 +546,15 @@ function formatFileSize(sizeBytes: number): string {
   }
 
   return `${(sizeKb / 1024).toFixed(2)} MB`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export = Image;
