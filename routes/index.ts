@@ -287,7 +287,7 @@ router.get('/', function(req: Request, res: Response) {
 
             <div style="margin-top: 24px; display: flex; gap: 10px;">
               <button id="sign-in-btn" class="cta-button" onclick="login()" style="flex: 1; text-align: center;">Sign In</button>
-              <button class="cta-button" onclick="register()" style="flex: 1; text-align: center; background: #764ba2;">Register</button>
+              <button id="register-btn" class="cta-button" onclick="register()" style="flex: 1; text-align: center; background: #764ba2;">Register</button>
             </div>
 
             <div style="margin-top: 16px; display: flex; gap: 10px;">
@@ -394,11 +394,15 @@ router.get('/', function(req: Request, res: Response) {
         function updateAuthButtons(isLoggedIn) {
           const signInButton = document.getElementById('sign-in-btn');
           const signOutButton = document.getElementById('sign-out-btn');
+          const registerButton = document.getElementById('register-btn');
           if (signInButton) {
             signInButton.style.display = isLoggedIn ? 'none' : '';
           }
           if (signOutButton) {
             signOutButton.style.display = isLoggedIn ? '' : 'none';
+          }
+          if (registerButton) {
+            registerButton.style.display = isLoggedIn ? 'none' : '';
           }
         }
 
