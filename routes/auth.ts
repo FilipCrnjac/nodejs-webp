@@ -16,6 +16,32 @@ const loginAttempts = new Map<string, LoginAttemptState>();
 const router = express.Router();
 const authService = new AuthService();
 
+router.post('/register', async (req: Request, res: Response) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: true, message: 'Username and password are required.' });
+  }
+
+  try {
+    const authResult = await authService.register(String(username), String(password));
+    if (!authResult) {
+      return res.status(409).json({ error: true, message: 'Username already exists.' });
+    }
+
+    applyAuthCookies(res, authResult.token, authResult.refreshToken);
+    return res.json({
+      token: authResult.token,
+      refreshToken: authResult.refreshToken,
+      tokenType: 'Bearer',
+      userId: authResult.userId,
+      expiresIn: 3600,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: true, message: 'Registration failed.' });
+  }
+});
+
 router.post('/login', async (req: Request, res: Response) => {
   const { username, password } = req.body || {};
   if (!username || !password) {

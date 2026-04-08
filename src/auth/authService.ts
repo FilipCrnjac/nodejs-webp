@@ -51,6 +51,31 @@ class AuthService {
     return this.issueTokens(matchedUser.id, matchedUser.username);
   }
 
+  async register(username: string, password: string): Promise<LoginResult | null> {
+    if (this.users.some(u => u.username === username)) {
+      return null;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const newUserId = Math.max(...this.users.map(u => u.id), 0) + 1;
+    const newUser: UserRecord = { id: newUserId, username, passwordHash };
+    this.users.push(newUser);
+
+    try {
+      this.saveUsers();
+    } catch (error) {
+      this.users.pop();
+      throw error;
+    }
+
+    return this.issueTokens(newUserId, username);
+  }
+
+  private saveUsers(): void {
+    const usersFilePath = resolveUsersFilePath();
+    fs.writeFileSync(usersFilePath, JSON.stringify(this.users, null, 2), 'utf8');
+  }
+
   async refresh(refreshToken: string): Promise<LoginResult> {
     const decoded = this.verifyTypedToken(refreshToken, 'refresh');
     const userId = Number(decoded.sub);
