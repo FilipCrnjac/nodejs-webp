@@ -27,109 +27,461 @@ class Image {
       const fileUrl = `/images/${folderId}/files/${safeFile}`;
       imagesHtml += `
         <figure class="image-card">
-          <img src="${fileUrl}" alt="${file.name}" onload="doneLoading('${file.name}')" onclick="openLightbox('${fileUrl}', '${file.name.replace(/'/g, "\\'")}')" title="Click to enlarge">
-          <figcaption class="image-meta">${file.name}<br>${formatFileSize(file.sizeBytes)}</figcaption>
+          <div class="image-wrapper">
+            <img src="${fileUrl}" alt="${file.name}" onload="doneLoading('${file.name}')" onclick="openLightbox('${fileUrl}', '${file.name.replace(/'/g, "\\'")}')" title="Click to enlarge">
+            <div class="image-overlay">
+              <svg class="zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+                <path d="M11 8v6M8 11h6"></path>
+              </svg>
+            </div>
+          </div>
+          <figcaption class="image-meta">
+            <div class="image-name">${file.name}</div>
+            <div class="image-size">${formatFileSize(file.sizeBytes)}</div>
+          </figcaption>
         </figure>
       `;
     });
 
     return `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
       <head>
-        <title>Directories</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>My Gallery</title>
         <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+          }
+
+          .container {
+            max-width: 1400px;
+            margin: 0 auto;
+          }
+
+          .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+          }
+
+          .header-content h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 8px;
+          }
+
+          .header-content p {
+            color: #666;
+            font-size: 14px;
+          }
+
+          .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+          }
+
+          .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+          }
+
           .gallery {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
           }
+
+          .gallery.empty {
+            grid-template-columns: 1fr;
+          }
+
+          .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+          }
+
+          .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+          }
+
+          .empty-state h2 {
+            color: #666;
+            margin-bottom: 10px;
+          }
+
+          .empty-state p {
+            color: #999;
+            margin-bottom: 20px;
+          }
+
+          .empty-state a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: transform 0.2s ease;
+          }
+
+          .empty-state a:hover {
+            transform: translateY(-2px);
+          }
+
           .image-card {
             margin: 0;
-            border: 1px solid #ddd;
-            padding: 8px;
-            border-radius: 6px;
             background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
           }
-          .image-card img {
+
+          .image-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+          }
+
+          .image-wrapper {
+            position: relative;
             width: 100%;
-            height: min(28vw, 260px);
-            min-height: 170px;
-            object-fit: contain;
-            display: block;
+            padding-bottom: 100%;
+            overflow: hidden;
             background: #f5f5f5;
-            cursor: zoom-in;
-            transition: opacity 0.15s;
           }
-          .image-card img:hover { opacity: 0.85; }
+
+          .image-wrapper img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 8px;
+            transition: opacity 0.2s ease;
+          }
+
+          .image-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(102, 126, 234, 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+            opacity: 0;
+          }
+
+          .image-card:hover .image-overlay {
+            background: rgba(102, 126, 234, 0.4);
+            opacity: 1;
+          }
+
+          .zoom-icon {
+            width: 40px;
+            height: 40px;
+            color: white;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+          }
+
+          .image-meta {
+            padding: 12px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+
+          .image-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            word-break: break-word;
+            line-height: 1.3;
+          }
+
+          .image-size {
+            font-size: 12px;
+            color: #999;
+          }
+
           /* Lightbox */
           #lightbox {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.88);
-            z-index: 999;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 9999;
             align-items: center;
             justify-content: center;
             flex-direction: column;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
           }
-          #lightbox.open { display: flex; }
+
+          #lightbox.open {
+            display: flex;
+          }
+
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+
           #lightbox img {
-            max-width: 92vw;
-            max-height: 82vh;
+            max-width: 95vw;
+            max-height: 70vh;
             object-fit: contain;
-            border-radius: 4px;
-            box-shadow: 0 4px 32px rgba(0,0,0,0.6);
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.3s ease;
           }
+
+          @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+
           #lightbox-caption {
             color: #eee;
-            margin-top: 12px;
+            margin-top: 20px;
             font-size: 14px;
             text-align: center;
+            max-width: 90vw;
+            word-break: break-word;
           }
+
           #lightbox-close {
             position: absolute;
-            top: 16px;
-            right: 24px;
-            font-size: 36px;
+            top: 20px;
+            right: 20px;
+            font-size: 40px;
             color: #fff;
             cursor: pointer;
             line-height: 1;
             user-select: none;
+            transition: color 0.2s ease;
+            background: rgba(0, 0, 0, 0.4);
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
           }
-          .image-meta {
-            margin-top: 8px;
-            font-size: 13px;
-            color: #333;
-            line-height: 1.4;
-            word-break: break-word;
+
+          #lightbox-close:hover {
+            color: #fff;
+            background: rgba(0, 0, 0, 0.6);
           }
-          @media (max-width: 1100px) {
-            .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+          .lightbox-controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
           }
-          @media (max-width: 700px) {
-            .gallery { grid-template-columns: 1fr; }
+
+          .lightbox-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            font-size: 14px;
+          }
+
+          .delete-btn {
+            background: #d32f2f;
+            color: white;
+          }
+
+          .delete-btn:hover {
+            background: #b71c1c;
+            box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+          }
+
+          .close-btn {
+            background: #666;
+            color: white;
+          }
+
+          .close-btn:hover {
+            background: #555;
+          }
+
+          #lightbox-filename {
+            display: none;
+          }
+
+          @media (max-width: 768px) {
+            .gallery {
+              grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+              gap: 16px;
+              padding: 16px;
+            }
+
+            .header {
+              flex-direction: column;
+              align-items: flex-start;
+            }
+
+            .back-link {
+              width: 100%;
+              justify-content: center;
+            }
+
+            #lightbox img {
+              max-height: 60vh;
+            }
+
+            .lightbox-controls {
+              gap: 8px;
+            }
+
+            .lightbox-btn {
+              padding: 8px 16px;
+              font-size: 13px;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .gallery {
+              grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+              gap: 12px;
+              padding: 12px;
+            }
+
+            .header-content h1 {
+              font-size: 22px;
+            }
+
+            #lightbox img {
+              max-height: 50vh;
+            }
+
+            #lightbox-close {
+              top: 10px;
+              right: 10px;
+              font-size: 32px;
+              width: 40px;
+              height: 40px;
+            }
           }
         </style>
       </head>
       <body>
+        <div class="container">
+          <div class="header">
+            <div class="header-content">
+              <h1>📸 My Gallery</h1>
+              <p>User #${folderId}</p>
+            </div>
+            <a href="/" class="back-link">← Back to App</a>
+          </div>
+
+          <div id="gallery-container" class="gallery${imagesHtml.trim() === '' ? ' empty' : ''}">
+            ${imagesHtml.trim() === '' ? `
+              <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <path d="m21 15-5-5L5 21"></path>
+                </svg>
+                <h2>No images yet</h2>
+                <p>Upload your first image to get started</p>
+                <a href="/">Go to Upload</a>
+              </div>
+            ` : imagesHtml}
+          </div>
+        </div>
+
+        <div id="lightbox" onclick="closeLightbox()">
+          <span id="lightbox-close" onclick="closeLightbox()">&times;</span>
+          <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+          <div id="lightbox-caption"></div>
+          <div class="lightbox-controls">
+            <button class="lightbox-btn delete-btn" onclick="deleteImage()">🗑️ Delete</button>
+            <button class="lightbox-btn close-btn" onclick="closeLightbox()">Close</button>
+          </div>
+          <span id="lightbox-filename" style="display:none;"></span>
+        </div>
+
         <script>
           const startTime = new Date().getTime();
+          
           function doneLoading(name) {
             let loadTime = new Date().getTime() - startTime;
-            console.log("Image ["+ name + "] took " + loadTime + "ms to load");
+            console.log("Image [" + name + "] took " + loadTime + "ms to load");
           }
+
           function openLightbox(url, name) {
             const lb = document.getElementById('lightbox');
             document.getElementById('lightbox-img').src = url;
             document.getElementById('lightbox-caption').textContent = name;
             document.getElementById('lightbox-filename').textContent = name;
             lb.classList.add('open');
+            document.body.style.overflow = 'hidden';
           }
+
           function closeLightbox() {
             document.getElementById('lightbox').classList.remove('open');
             document.getElementById('lightbox-img').src = '';
+            document.body.style.overflow = '';
           }
+
           async function deleteImage() {
             const name = document.getElementById('lightbox-filename').textContent;
             if (!confirm('Delete ' + name + ' and its WebP variants?')) return;
@@ -140,27 +492,19 @@ class Image {
               headers: token ? { Authorization: 'Bearer ' + token } : {}
             });
             if (response.ok) {
-              alert('Deleted');
+              alert('Image deleted successfully');
               location.reload();
             } else {
-              alert('Delete failed');
+              alert('Failed to delete image');
             }
           }
-          document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+          document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeLightbox();
+          });
         </script>
-        <div id="lightbox" onclick="closeLightbox()">
-          <span id="lightbox-close" onclick="closeLightbox()">&times;</span>
-          <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
-          <div id="lightbox-caption"></div>
-          <div style="margin-top: 10px;">
-            <button onclick="deleteImage()" style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete</button>
-          </div>
-          <span id="lightbox-filename" style="display:none;"></span>
-        </div>
-        <h1>Path: /images/${folderId}/html</h1>
-        <h2><a href="/">HOME</a></h2><br>
-        <div class="gallery">${imagesHtml}</div>
-      </body></html>`;
+      </body>
+      </html>`;
   }
 
   getDirectoryJson(folderId: number): { images: string[] } {
