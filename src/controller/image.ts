@@ -23,7 +23,8 @@ class Image {
   getDirectoryHtml(folderId: number): string {
     let imagesHtml = "";
     imageService.getDirectoryFiles(folderId).forEach(file => {
-      imagesHtml += `<img src="../../${folderId}/${file}" alt="${file}" title="${file}" onload="doneLoading('${file}')">`;
+      const safeFile = encodeURIComponent(file);
+      imagesHtml += `<img src="/images/${folderId}/files/${safeFile}?auth=${folderId}" alt="${file}" title="${file}" onload="doneLoading('${file}')">`;
     });
 
     return `

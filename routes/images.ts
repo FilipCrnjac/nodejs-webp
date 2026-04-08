@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 
 import express, { Request, Response } from 'express';
 
@@ -44,6 +45,33 @@ router.get('/:id/json', function(req: Request, res: Response) {
     console.log(e);
     return res.status(500).json({ error: true, message: `Couldn't load folder ${folderId} images (JSON).`});
   }
+});
+
+/* GET single image file from selected folder (authorized user only) */
+router.get('/:id/files/:name', function(req: Request, res: Response) {
+  const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
+  if (!folderId) {
+    return null;
+  }
+
+  const fileName = path.basename(String(req.params.name));
+  let decodedName = '';
+  try {
+    decodedName = decodeURIComponent(fileName);
+  } catch (e) {
+    return res.status(400).json({ error: true, message: 'Invalid file name!' });
+  }
+
+  if (!decodedName) {
+    return res.status(400).json({ error: true, message: 'Invalid file name!' });
+  }
+
+  const fullPath = path.join(process.env.UPLOADS_FOLDER!, `${folderId}`, decodedName);
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: true, message: 'Non existing file!' });
+  }
+
+  return res.sendFile(fullPath);
 });
 
 export = router;

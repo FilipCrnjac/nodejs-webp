@@ -15,8 +15,6 @@ process.env.UPLOADS_FOLDER = process.env.UPLOADS_FOLDER || path.join(__dirname, 
 function createApp() {
   const app = express();
 
-  // Serve folder as static so we can preview images
-  app.use(express.static(process.env.UPLOADS_FOLDER!));
 
   app.use('/', indexRouter);
   app.use('/uploads', uploadsRouter);

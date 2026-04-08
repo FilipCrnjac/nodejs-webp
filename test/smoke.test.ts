@@ -90,6 +90,22 @@ test('GET /images/:id/json returns files for the authenticated folder', async ()
   });
 });
 
+test('GET /images/:id/files/:name blocks cross-user access and serves owner file', async () => {
+  fs.mkdirSync(path.join(uploadsRoot, '13'), { recursive: true });
+  const filePath = path.join(uploadsRoot, '13', 'sample.jpeg');
+  fs.writeFileSync(filePath, 'demo-content');
+
+  const forbiddenResponse = await fetch(createUrl('/images/13/files/sample.jpeg?auth=1'));
+  const forbiddenBody = await forbiddenResponse.json();
+  assert.equal(forbiddenResponse.status, 403);
+  assert.deepEqual(forbiddenBody, { error: true, message: 'Forbidden!' });
+
+  const okResponse = await fetch(createUrl('/images/13/files/sample.jpeg?auth=13'));
+  const text = await okResponse.text();
+  assert.equal(okResponse.status, 200);
+  assert.equal(text, 'demo-content');
+});
+
 test('POST /uploads rejects unsupported file types before saving', async () => {
   const formData = new FormData();
   formData.set('myImage', new File(['hello'], 'note.txt', { type: 'text/plain' }));
