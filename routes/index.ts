@@ -46,6 +46,7 @@ router.get('/login', function(req: Request, res: Response) {
         <button onclick="logout()">Logout</button>
         <h3>Access token</h3>
         <pre id="token">(none)</pre>
+        <p><a id="my-images-link" href="#" style="display:none;font-size:16px;">My images</a></p>
       </div>
       <script>
         function setToken(value) {
@@ -66,8 +67,22 @@ router.get('/login', function(req: Request, res: Response) {
             alert(body.message || 'Login failed');
             return;
           }
+          localStorage.setItem('user_id', String(body.userId || ''));
           setToken(body.token || '');
-          alert('Login successful. You can now open /images or /uploads.');
+          updateMyImagesLink();
+        }
+
+        function updateMyImagesLink() {
+          const userId = localStorage.getItem('user_id') || '';
+          const link = document.getElementById('my-images-link');
+          if (!link) return;
+          if (userId) {
+            link.href = '/images/' + userId + '/html';
+            link.textContent = 'My images (user ' + userId + ')';
+            link.style.display = '';
+          } else {
+            link.style.display = 'none';
+          }
         }
 
         async function refreshToken() {
@@ -96,10 +111,13 @@ router.get('/login', function(req: Request, res: Response) {
             body: JSON.stringify({})
           });
           setToken('');
+          localStorage.removeItem('user_id');
+          updateMyImagesLink();
           alert('Logged out');
         }
 
         setToken(localStorage.getItem('access_token') || '');
+        updateMyImagesLink();
       </script>
     </body>
     </html>

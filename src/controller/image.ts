@@ -24,9 +24,12 @@ class Image {
     let imagesHtml = '';
     imageService.getDirectoryFilesWithSize(folderId).forEach(file => {
       const safeFile = encodeURIComponent(file.name);
+      const fileUrl = `/images/${folderId}/files/${safeFile}`;
       imagesHtml += `
         <figure class="image-card">
-          <img src="/images/${folderId}/files/${safeFile}" alt="${file.name}" title="${file.name}" onload="doneLoading('${file.name}')">
+          <a href="${fileUrl}" target="_blank" rel="noopener" title="Open full size">
+            <img src="${fileUrl}" alt="${file.name}" onload="doneLoading('${file.name}')">
+          </a>
           <figcaption class="image-meta">${file.name}<br>${formatFileSize(file.sizeBytes)}</figcaption>
         </figure>
       `;
@@ -57,7 +60,10 @@ class Image {
             object-fit: contain;
             display: block;
             background: #f5f5f5;
+            cursor: pointer;
+            transition: opacity 0.15s;
           }
+          .image-card a:hover img { opacity: 0.85; }
           .image-meta {
             margin-top: 8px;
             font-size: 13px;
