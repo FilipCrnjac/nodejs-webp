@@ -179,6 +179,39 @@ router.get('/', function(req: Request, res: Response) {
           border-top: 1px solid #e0e0e0;
         }
 
+        .toast-container {
+          position: fixed;
+          right: 20px;
+          bottom: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          z-index: 9999;
+          pointer-events: none;
+        }
+
+        .toast {
+          min-width: 260px;
+          max-width: min(420px, 90vw);
+          border-radius: 8px;
+          padding: 12px 14px;
+          color: #fff;
+          font-size: 14px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+          opacity: 0;
+          transform: translateY(10px);
+          transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .toast.show {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .toast.success { background: #2e7d32; }
+        .toast.error { background: #c62828; }
+        .toast.info { background: #546e7a; }
+
         @media (max-width: 600px) {
           .header {
             padding: 30px 15px;
@@ -319,6 +352,7 @@ router.get('/', function(req: Request, res: Response) {
           <p>© 2026 Image Upload Studio. All images are securely stored and optimized.</p>
         </div>
       </div>
+      <div id="toast-container" class="toast-container"></div>
 
       <script>
         function switchTab(event, tabName) {
@@ -356,6 +390,25 @@ router.get('/', function(req: Request, res: Response) {
           updateUploadAccess();
         }
 
+        function showToast(message, type = 'info') {
+          const container = document.getElementById('toast-container');
+          if (!container) {
+            return;
+          }
+
+          const toast = document.createElement('div');
+          toast.className = 'toast ' + type;
+          toast.textContent = message;
+          container.appendChild(toast);
+
+          requestAnimationFrame(() => toast.classList.add('show'));
+
+          setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 200);
+          }, 2600);
+        }
+
         function updateUploadAccess() {
           const hasToken = Boolean(localStorage.getItem('access_token'));
           const note = document.getElementById('upload-login-note');
@@ -390,7 +443,7 @@ router.get('/', function(req: Request, res: Response) {
           const password = document.getElementById('password').value;
           
           if (!username || !password) {
-            alert('Please enter username and password');
+            showToast('Please enter username and password', 'error');
             return;
           }
 
@@ -402,13 +455,13 @@ router.get('/', function(req: Request, res: Response) {
           const body = await response.json();
           
           if (!response.ok) {
-            alert(body.message || 'Registration failed');
+            showToast(body.message || 'Registration failed', 'error');
             return;
           }
           
           localStorage.setItem('user_id', String(body.userId || ''));
           setToken(body.token || '');
-          alert('Registration successful!');
+          showToast('Registration successful!', 'success');
         }
 
         async function login() {
@@ -423,13 +476,13 @@ router.get('/', function(req: Request, res: Response) {
           const body = await response.json();
           
           if (!response.ok) {
-            alert(body.message || 'Login failed');
+            showToast(body.message || 'Login failed', 'error');
             return;
           }
           
           localStorage.setItem('user_id', String(body.userId || ''));
           setToken(body.token || '');
-          alert('Welcome!');
+          showToast('Welcome back!', 'success');
         }
 
         function updateGalleryLink() {
@@ -455,12 +508,12 @@ router.get('/', function(req: Request, res: Response) {
           const body = await response.json();
           
           if (!response.ok) {
-            alert(body.message || 'Refresh failed');
+            showToast(body.message || 'Refresh failed', 'error');
             return;
           }
           
           setToken(body.token || '');
-          alert('Token refreshed!');
+          showToast('Token refreshed', 'success');
         }
 
         async function logout() {
@@ -472,7 +525,7 @@ router.get('/', function(req: Request, res: Response) {
           
           setToken('');
           localStorage.removeItem('user_id');
-          alert('Signed out successfully!');
+          showToast('Signed out successfully', 'success');
         }
 
         async function submitUploadFromHomeTab(event) {
