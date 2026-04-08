@@ -1,26 +1,43 @@
-const imagemin = require("imagemin");
-const webp = require("imagemin-webp");
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const FileHelperSync = require("./../utils/fileHelperSync");
+const imagemin = require('imagemin');
+const webp = require('imagemin-webp');
 
-module.exports = class Webp {
-  static async convertLossy(inputImage, destination, quality = 75) {
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
+import FileHelperSync = require('./../utils/fileHelperSync');
+
+type WebpPluginOptions = {
+  quality: number;
+  lossless?: boolean;
+};
+
+type ImageminResult = {
+  destinationPath?: string;
+};
+
+class Webp {
+  static async convertLossy(inputImage: string, destination: string, quality = 75): Promise<string> {
     return convert(inputImage, destination, quality, 'lossy', {
       quality,
     });
   }
 
-  static async convertLossless(inputImage, destination, quality = 75) {
+  static async convertLossless(inputImage: string, destination: string, quality = 75): Promise<string> {
     return convert(inputImage, destination, quality, 'lossless', {
       quality,
       lossless: true
     });
   }
-};
+}
 
-async function convert(inputImage, destination, quality, label, pluginOptions) {
+async function convert(
+  inputImage: string,
+  destination: string,
+  quality: number,
+  label: string,
+  pluginOptions: WebpPluginOptions
+): Promise<string> {
   const tempDestination = fs.mkdtempSync(path.join(os.tmpdir(), `nodejs-webp-${label}-`));
 
   try {
@@ -31,7 +48,7 @@ async function convert(inputImage, destination, quality, label, pluginOptions) {
       plugins: [
         webp(pluginOptions)
       ]
-    });
+    }) as ImageminResult[];
     logExecutionTime(startTime, `${capitalize(label)} (${inputImage})`);
 
     if (!result[0] || !result[0].destinationPath) {
@@ -51,12 +68,14 @@ async function convert(inputImage, destination, quality, label, pluginOptions) {
   }
 }
 
-function logExecutionTime(start, message) {
+function logExecutionTime(start: [number, number], message: string): void {
   const end = process.hrtime(start);
   console.info(`${message} execution time: ${end[0]}s ${(end[1] / 1000000).toFixed(2)}ms`);
 }
 
-function capitalize(value) {
+function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
+
+export = Webp;
 

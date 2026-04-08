@@ -1,9 +1,9 @@
-const FileHelperSync = require("./../utils/fileHelperSync");
+import FileHelperSync = require('./../utils/fileHelperSync');
 
-module.exports = class Image {
-  getImageDirectories() {
-    const links = FileHelperSync.getDirectories(process.env.UPLOADS_FOLDER).map(dir => {
-       return `<li><h3>${dir} - <a href=images/${dir}/html?auth=${dir}>HTML</a> / <a href=images/${dir}/json?auth=${dir}>JSON</a></<br></h3></li>`;
+class Image {
+  getImageDirectories(): string {
+    const links = FileHelperSync.getDirectories(process.env.UPLOADS_FOLDER!).map(dir => {
+      return `<li><h3>${dir} - <a href=images/${dir}/html?auth=${dir}>HTML</a> / <a href=images/${dir}/json?auth=${dir}>JSON</a></<br></h3></li>`;
     });
     const isEmpty = links.length ? `:` : ` is empty. Upload some images on <a href="/uploads">/uploads</a>.`;
 
@@ -18,9 +18,9 @@ module.exports = class Image {
      `;
   }
 
-  getDirectoryHtml(folderId) {
+  getDirectoryHtml(folderId: number): string {
     let imagesHtml = "";
-    FileHelperSync.getFiles(`${process.env.UPLOADS_FOLDER}/${folderId}`).forEach(file => {
+    FileHelperSync.getFiles(`${process.env.UPLOADS_FOLDER!}/${folderId}`).forEach(file => {
       imagesHtml += `<img src="../../${folderId}/${file}" alt="${file}" title="${file}" onload="doneLoading('${file}')">`;
     });
 
@@ -42,9 +42,11 @@ module.exports = class Image {
       </body></html>`;
   }
 
-  getDirectoryJson(folderId) {
+  getDirectoryJson(folderId: number): { images: string[] } {
     return {
-      images: FileHelperSync.getFiles(`${process.env.UPLOADS_FOLDER}/${folderId}`)
+      images: FileHelperSync.getFiles(`${process.env.UPLOADS_FOLDER!}/${folderId}`)
     };
   }
-};
+}
+
+export = Image;

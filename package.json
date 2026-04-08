@@ -2,10 +2,12 @@
   "name": "node-image-upload",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "test": "node --test",
-    "start": "node server.js"
+    "build": "tsc",
+    "prestart": "npm run build --silent",
+    "start": "node dist/server.js",
+    "test": "npm run build --silent && node --test dist/test/**/*.test.js"
   },
   "author": "",
   "license": "ISC",
@@ -17,6 +19,10 @@
     "multer": "^2.1.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.2"
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^25.5.2",
+    "nodemon": "^2.0.2",
+    "typescript": "^6.0.2"
   }
 }

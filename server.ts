@@ -1,20 +1,22 @@
-const express = require('express');
-const path = require('path');
+import express, { NextFunction, Request, Response } from 'express';
+import path from 'path';
+
+import auth = require('./src/auth/auth');
+import indexRouter = require('./routes/index');
+import uploadsRouter = require('./routes/uploads');
+import imagesRouter = require('./routes/images');
+
+type HttpError = Error & { status?: number };
 
 const port = parseInt(process.env.PORT || '3003', 10);
 // adjust it to your needs (default is inside project)
-process.env.UPLOADS_FOLDER = process.env.UPLOADS_FOLDER || path.join(__dirname, 'uploads/images');
-
-const auth = require('./src/auth/auth');
-const indexRouter = require('./routes/index');
-const uploadsRouter = require('./routes/uploads');
-const imagesRouter = require('./routes/images');
+process.env.UPLOADS_FOLDER = process.env.UPLOADS_FOLDER || path.join(__dirname, '../uploads/images');
 
 function createApp() {
   const app = express();
 
   // Serve folder as static so we can preview images
-  app.use(express.static(process.env.UPLOADS_FOLDER));
+  app.use(express.static(process.env.UPLOADS_FOLDER!));
 
   app.use('/', indexRouter);
   app.use('/uploads', uploadsRouter);
@@ -22,7 +24,8 @@ function createApp() {
   app.use('/images', auth.isAuthenticated, imagesRouter);
 
   // error handler
-  app.use(function(err, req, res, next) {
+  app.use(function(err: HttpError, req: Request, res: Response, next: NextFunction) {
+    void next;
     console.log(err);
     const status = err && err.status ? err.status : 500;
     const message = err instanceof Error ? err.message : 'Server error!';
@@ -44,4 +47,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = app;
+export = app;

@@ -1,8 +1,9 @@
-const express = require('express');
+import express, { Request, Response } from 'express';
+
 const router = express.Router();
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
+router.get('/', function(req: Request, res: Response) {
   const html = `
     <!DOCTYPE html>
     <html><body>
@@ -15,4 +16,4 @@ router.get('/', function(req, res, next) {
   return res.type('.html').send(html);
 });
 
-module.exports = router;
+export = router;

@@ -1,19 +1,20 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { Server } from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+
+import app = require('../server');
 
 const uploadsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nodejs-webp-tests-'));
 process.env.UPLOADS_FOLDER = uploadsRoot;
-const sampleImagePath = path.join(__dirname, '..', 'uploads/images/15/image-1775633444155.png');
+const sampleImagePath = path.join(process.cwd(), 'uploads/images/15/image-1775633444155.png');
 
-const app = require('../server');
+let server: Server;
+let baseUrl: string;
 
-let server;
-let baseUrl;
-
-function createUrl(pathname) {
+function createUrl(pathname: string): string {
   return new URL(pathname, baseUrl).toString();
 }
 
@@ -25,13 +26,18 @@ function createImageFile() {
 test.before(async () => {
   server = app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
-  const { port } = server.address();
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Unable to determine server port for smoke tests.');
+  }
+
+  const { port } = address;
   baseUrl = `http://127.0.0.1:${port}`;
 });
 
 test.after(async () => {
   if (server) {
-    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 
   fs.rmSync(uploadsRoot, { recursive: true, force: true });

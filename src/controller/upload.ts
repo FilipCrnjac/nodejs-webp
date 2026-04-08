@@ -1,15 +1,21 @@
-const path = require('path');
-const multer = require('multer');
-const Webp = require("./../../src/utils/webp");
-const FileHelperSync = require("./../utils/fileHelperSync");
-const createHttpError = require('./../utils/httpError');
+import path from 'path';
+
+import { Request, Response } from 'express';
+import multer from 'multer';
+
+import Webp = require('./../../src/utils/webp');
+import FileHelperSync = require('./../utils/fileHelperSync');
+import createHttpError = require('./../utils/httpError');
+
+type HttpError = Error & { status: number };
+type AuthenticatedUploadRequest = Request & { userId: number };
 
 const supportedImageFormats = new Set(["image/png", "image/jpeg"]);
 const quality = 75;
 const maxUploadSizeBytes = 10 * 1024 * 1024;
 
-module.exports = class Upload {
-  getUploadsPage() {
+class Upload {
+  getUploadsPage(): string {
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -65,8 +71,8 @@ module.exports = class Upload {
   `;
   }
 
-  uploadPhoto(req, res) {
-    return new Promise((resolve, reject) => {
+  uploadPhoto(req: AuthenticatedUploadRequest, res: Response): Promise<string> {
+    return new Promise((resolve, reject: (reason: HttpError) => void) => {
       const userId = req.userId;
 
       // create folder if doesn't exists
@@ -74,10 +80,10 @@ module.exports = class Upload {
 
       // multer configuration about destination and filename
       const storage = multer.diskStorage({
-        destination: function (req, file, cb) {
+        destination(request, file, cb) {
           cb(null, `${process.env.UPLOADS_FOLDER}/${userId}`);
         },
-        filename: function (req, file, cb) {
+        filename(request, file, cb) {
           const parsedFile = path.parse(file.originalname);
           cb(null, parsedFile.name + '-' + Date.now() + parsedFile.ext);
           // or form's input name
@@ -99,7 +105,7 @@ module.exports = class Upload {
         }
       }).single('myImage');
 
-      multerUpload(req, res, async function (err) {
+      multerUpload(req, res, async err => {
         if (err) {
           console.log(err);
           cleanupUploadArtifacts(req.file && req.file.path, quality);
@@ -145,34 +151,34 @@ module.exports = class Upload {
       });
     });
   }
-};
+}
 
-async function convertToMultipleQualities(req) {
+async function convertToMultipleQualities(req: AuthenticatedUploadRequest): Promise<string[][]> {
   const qualities = [50, 75, 100];
 
   return Promise.all(qualities.map(q => runConvertConcurrently(req, q)));
 }
 
-async function runConversionSynchronous(req, quality) {
-  await Webp.convertLossy(req.file.path, req.file.destination, quality);
-  await Webp.convertLossless(req.file.path, req.file.destination, quality);
+async function runConversionSynchronous(req: AuthenticatedUploadRequest, qualityValue: number): Promise<true> {
+  await Webp.convertLossy(req.file!.path, req.file!.destination, qualityValue);
+  await Webp.convertLossless(req.file!.path, req.file!.destination, qualityValue);
 
   return true;
 }
 
-function runConvertConcurrently(req, quality) {
+function runConvertConcurrently(req: AuthenticatedUploadRequest, qualityValue: number): Promise<string[]> {
   return Promise.all([
-    Webp.convertLossy(req.file.path, req.file.destination, quality),
-    Webp.convertLossless(req.file.path, req.file.destination, quality)
+    Webp.convertLossy(req.file!.path, req.file!.destination, qualityValue),
+    Webp.convertLossless(req.file!.path, req.file!.destination, qualityValue)
   ]);
 }
 
-function logExecutionTime(start, message) {
+function logExecutionTime(start: [number, number], message: string): void {
   const end = process.hrtime(start);
   console.info(`${message} execution time: ${end[0]}s ${(end[1] / 1000000).toFixed(2)}ms`);
 }
 
-function cleanupUploadArtifacts(originalFilePath, quality) {
+function cleanupUploadArtifacts(originalFilePath: string | undefined, qualityValue: number): void {
   if (!originalFilePath) {
     return;
   }
@@ -180,20 +186,21 @@ function cleanupUploadArtifacts(originalFilePath, quality) {
   const parsedFile = path.parse(originalFilePath);
   const derivedFiles = [
     originalFilePath,
-    path.join(parsedFile.dir, `${parsedFile.name}_${quality}-lossy.webp`),
-    path.join(parsedFile.dir, `${parsedFile.name}_${quality}-lossless.webp`),
+    path.join(parsedFile.dir, `${parsedFile.name}_${qualityValue}-lossy.webp`),
+    path.join(parsedFile.dir, `${parsedFile.name}_${qualityValue}-lossless.webp`),
   ];
 
   derivedFiles.forEach(filePath => {
     try {
       FileHelperSync.deleteFile(filePath);
-    } catch (e) {
-      console.log(`Cleanup skipped for ${filePath}`, e.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown cleanup error';
+      console.log(`Cleanup skipped for ${filePath}`, message);
     }
   });
 }
 
-function mapUploadError(err) {
+function mapUploadError(err: unknown): HttpError {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return createHttpError(413, `Image is too large. Max allowed size is ${Math.round(maxUploadSizeBytes / (1024 * 1024))}MB.`);
@@ -202,10 +209,12 @@ function mapUploadError(err) {
     return createHttpError(400, err.message);
   }
 
-  if (err && err.status) {
-    return err;
+  if (err instanceof Error && 'status' in err && typeof err.status === 'number') {
+    return err as HttpError;
   }
 
   return createHttpError(500, 'Saving image failed. Please try again.');
 }
+
+export = Upload;
 
