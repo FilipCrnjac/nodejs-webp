@@ -279,19 +279,20 @@ router.get('/', function(req: Request, res: Response) {
           <h2>Upload Image</h2>
           <p>Upload your images and we'll automatically optimize them for web.</p>
           
-          <div class="info-box">
-            <strong>ℹ️ Note:</strong> You must be logged in to upload images. Navigate to the <strong>Account</strong> tab to sign in.
+          <div id="upload-login-note" class="info-box" style="display: none;">
+            <strong>Sign in required:</strong> Upload is enabled after you sign in from the <strong>Account</strong> tab.
           </div>
 
           <div style="margin-top: 30px;">
-            <form action="/uploads" method="POST" enctype="multipart/form-data">
+            <form id="home-upload-form" action="/uploads" method="POST" enctype="multipart/form-data">
               <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 10px; color: #333; font-weight: 500;">Select Image</label>
-                <input type="file" name="file" accept="image/*" required
+                <input id="home-upload-file" type="file" name="myImage" accept="image/*" required
                        style="display: block; width: 100%; padding: 12px; border: 2px dashed #667eea; border-radius: 6px; cursor: pointer;" />
               </div>
-              <button type="submit" class="cta-button" style="width: 100%; text-align: center;">Upload & Optimize</button>
+              <button id="home-upload-submit" type="submit" class="cta-button" style="width: 100%; text-align: center;">Upload & Optimize</button>
             </form>
+            <p id="upload-status" style="display: none; margin-top: 12px; font-size: 14px;"></p>
           </div>
 
           <div style="margin-top: 30px;">
@@ -352,6 +353,36 @@ router.get('/', function(req: Request, res: Response) {
             statusEl.className = 'status logged-out';
           }
           updateGalleryLink();
+          updateUploadAccess();
+        }
+
+        function updateUploadAccess() {
+          const hasToken = Boolean(localStorage.getItem('access_token'));
+          const note = document.getElementById('upload-login-note');
+          const fileInput = document.getElementById('home-upload-file');
+          const submitButton = document.getElementById('home-upload-submit');
+          const status = document.getElementById('upload-status');
+
+          if (note) {
+            note.style.display = hasToken ? 'none' : 'block';
+          }
+
+          if (fileInput) {
+            fileInput.disabled = !hasToken;
+            fileInput.style.opacity = hasToken ? '1' : '0.6';
+            fileInput.style.cursor = hasToken ? 'pointer' : 'not-allowed';
+          }
+
+          if (submitButton) {
+            submitButton.disabled = !hasToken;
+            submitButton.style.opacity = hasToken ? '1' : '0.6';
+            submitButton.style.cursor = hasToken ? 'pointer' : 'not-allowed';
+          }
+
+          if (status && !hasToken) {
+            status.style.display = 'none';
+            status.textContent = '';
+          }
         }
 
         async function register() {
@@ -442,6 +473,61 @@ router.get('/', function(req: Request, res: Response) {
           setToken('');
           localStorage.removeItem('user_id');
           alert('Signed out successfully!');
+        }
+
+        async function submitUploadFromHomeTab(event) {
+          event.preventDefault();
+
+          const form = document.getElementById('home-upload-form');
+          const submitButton = document.getElementById('home-upload-submit');
+          const status = document.getElementById('upload-status');
+          if (!form || !submitButton || !status) {
+            return;
+          }
+
+          const formData = new FormData(form);
+          const token = localStorage.getItem('access_token') || '';
+
+          if (!token) {
+            status.style.display = 'block';
+            status.style.color = '#c62828';
+            status.textContent = 'Please sign in first to upload.';
+            return;
+          }
+
+          submitButton.disabled = true;
+          status.style.display = 'block';
+          status.style.color = '#666';
+          status.textContent = 'Uploading...';
+
+          try {
+            const response = await fetch('/uploads', {
+              method: 'POST',
+              headers: token ? { Authorization: 'Bearer ' + token } : {},
+              body: formData,
+            });
+
+            const body = await response.text();
+            if (!response.ok) {
+              status.style.color = '#c62828';
+              status.textContent = body || 'Upload failed. Please sign in and try again.';
+              return;
+            }
+
+            document.open();
+            document.write(body);
+            document.close();
+          } catch (error) {
+            status.style.color = '#c62828';
+            status.textContent = 'Upload failed due to a network error.';
+          } finally {
+            submitButton.disabled = false;
+          }
+        }
+
+        const homeUploadForm = document.getElementById('home-upload-form');
+        if (homeUploadForm) {
+          homeUploadForm.addEventListener('submit', submitUploadFromHomeTab);
         }
 
         // Initialize on page load
