@@ -13,6 +13,27 @@ const port = parseInt(process.env.PORT || '3003', 10);
 // adjust it to your needs (default is inside project)
 process.env.UPLOADS_FOLDER = process.env.UPLOADS_FOLDER || path.join(__dirname, '../uploads/images');
 
+// Validate required environment variables at startup
+function validateEnvironment(): void {
+  const required = ['UPLOADS_FOLDER'];
+  const missing = required.filter(key => !process.env[key]);
+
+  if (missing.length > 0) {
+    console.error(`❌ Missing environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+
+  const uploadsFolder = process.env.UPLOADS_FOLDER;
+  if (!require('fs').existsSync(uploadsFolder)) {
+    console.error(`❌ UPLOADS_FOLDER does not exist: ${uploadsFolder}`);
+    process.exit(1);
+  }
+
+  console.log(`✓ Environment validated. UPLOADS_FOLDER: ${uploadsFolder}`);
+}
+
+validateEnvironment();
+
 function createApp() {
   const app = express();
 
