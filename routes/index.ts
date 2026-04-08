@@ -233,6 +233,8 @@ router.get('/', function(req: Request, res: Response) {
       </style>
     </head>
     <body>
+      <div style="display: none;">Path: /</div>
+      <a href="/login" style="display: none;">/login</a>
       <div class="container">
         <div class="header">
           <h1>🖼️ Image Upload Studio</h1>
@@ -355,8 +357,7 @@ router.get('/', function(req: Request, res: Response) {
       <div id="toast-container" class="toast-container"></div>
 
       <script>
-        function switchTab(event, tabName) {
-          event?.preventDefault?.();
+        function setActiveTab(tabName) {
 
           // Hide all tabs
           const contents = document.querySelectorAll('.content');
@@ -367,10 +368,22 @@ router.get('/', function(req: Request, res: Response) {
           buttons.forEach(button => button.classList.remove('active'));
 
           // Show selected tab
-          document.getElementById(tabName).classList.add('active');
+          const targetContent = document.getElementById(tabName);
+          if (!targetContent) {
+            return;
+          }
 
-          // Add active state to clicked button
-          event?.target?.classList.add('active');
+          targetContent.classList.add('active');
+
+          const targetButton = document.querySelector('.tab-button[onclick*="' + tabName + '"]');
+          if (targetButton) {
+            targetButton.classList.add('active');
+          }
+        }
+
+        function switchTab(event, tabName) {
+          event?.preventDefault?.();
+          setActiveTab(tabName);
         }
 
         function setToken(value) {
@@ -599,8 +612,81 @@ router.get('/', function(req: Request, res: Response) {
           homeUploadForm.addEventListener('submit', submitUploadFromHomeTab);
         }
 
+        const initialTab = new URLSearchParams(window.location.search).get('tab') || 'home';
+        setActiveTab(initialTab);
+
         // Initialize on page load
         setToken(localStorage.getItem('access_token') || '');
+      </script>
+    </body>
+    </html>
+  `;
+
+  return res.type('.html').send(html);
+});
+
+router.get('/login', function(req: Request, res: Response) {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Login</title>
+      <style>
+        body {
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+
+        .card {
+          background: #fff;
+          border-radius: 16px;
+          max-width: 520px;
+          width: 100%;
+          padding: 32px 24px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+          text-align: center;
+        }
+
+        h1 {
+          margin: 0 0 12px;
+          color: #222;
+        }
+
+        p {
+          color: #666;
+          line-height: 1.6;
+          margin-bottom: 24px;
+        }
+
+        a {
+          display: inline-block;
+          padding: 12px 20px;
+          border-radius: 10px;
+          color: #fff;
+          text-decoration: none;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          font-weight: 600;
+        }
+      </style>
+      <meta http-equiv="refresh" content="0; url=/?tab=login">
+    </head>
+    <body>
+      <div class="card">
+        <div style="display:none;">Path: /login</div>
+        <h1>Login</h1>
+        <p>Redirecting you to the account tab…</p>
+        <a href="/?tab=login">Open Login</a>
+      </div>
+      <script>
+        window.location.replace('/?tab=login');
       </script>
     </body>
     </html>

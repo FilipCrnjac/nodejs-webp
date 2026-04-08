@@ -73,16 +73,302 @@ class UploadService {
           const html = `
             <!DOCTYPE html>
             <html lang="en">
-            <head><meta charset="UTF-8"><title>Upload Complete</title></head>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Upload Complete</title>
+              <style>
+                * {
+                  margin: 0;
+                  padding: 0;
+                  box-sizing: border-box;
+                }
+
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  min-height: 100vh;
+                  padding: 20px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                }
+
+                .page {
+                  width: 100%;
+                  max-width: 860px;
+                }
+
+                .card {
+                  background: #fff;
+                  border-radius: 18px;
+                  overflow: hidden;
+                  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+                }
+
+                .hero {
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  color: #fff;
+                  padding: 36px 32px;
+                  text-align: center;
+                }
+
+                .hero-badge {
+                  width: 78px;
+                  height: 78px;
+                  margin: 0 auto 18px;
+                  border-radius: 50%;
+                  background: rgba(255, 255, 255, 0.16);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 38px;
+                  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
+                }
+
+                .hero h1 {
+                  font-size: 32px;
+                  margin-bottom: 10px;
+                }
+
+                .hero p {
+                  font-size: 15px;
+                  opacity: 0.94;
+                  max-width: 560px;
+                  margin: 0 auto;
+                  line-height: 1.6;
+                }
+
+                .content {
+                  padding: 30px;
+                }
+
+                .summary {
+                  display: grid;
+                  grid-template-columns: repeat(3, minmax(0, 1fr));
+                  gap: 16px;
+                  margin-bottom: 24px;
+                }
+
+                .summary-card {
+                  background: #f8f9ff;
+                  border: 1px solid #e5e9ff;
+                  border-radius: 14px;
+                  padding: 18px;
+                }
+
+                .summary-label {
+                  font-size: 11px;
+                  text-transform: uppercase;
+                  letter-spacing: 0.08em;
+                  color: #7b8098;
+                  margin-bottom: 8px;
+                }
+
+                .summary-value {
+                  color: #222;
+                  font-size: 17px;
+                  font-weight: 700;
+                  line-height: 1.4;
+                  word-break: break-word;
+                }
+
+                .info-box {
+                  background: #f4f7ff;
+                  border-left: 4px solid #667eea;
+                  border-radius: 10px;
+                  padding: 18px;
+                  margin-bottom: 24px;
+                  color: #374151;
+                  line-height: 1.6;
+                }
+
+                .info-box strong {
+                  color: #4f46e5;
+                }
+
+                .quality-grid {
+                  display: grid;
+                  grid-template-columns: repeat(2, minmax(0, 1fr));
+                  gap: 16px;
+                  margin-bottom: 28px;
+                }
+
+                .quality-card {
+                  border-radius: 14px;
+                  padding: 20px;
+                  border: 1px solid #ececec;
+                }
+
+                .quality-card.lossy {
+                  background: #fff8f0;
+                  border-color: #fde5c7;
+                }
+
+                .quality-card.lossless {
+                  background: #f2fff6;
+                  border-color: #d8f0de;
+                }
+
+                .quality-card h2 {
+                  font-size: 18px;
+                  margin-bottom: 10px;
+                  color: #222;
+                }
+
+                .quality-card p {
+                  color: #5b6475;
+                  font-size: 14px;
+                  line-height: 1.6;
+                }
+
+                .quality-score {
+                  display: inline-block;
+                  margin-top: 12px;
+                  padding: 8px 12px;
+                  border-radius: 999px;
+                  background: rgba(255,255,255,0.82);
+                  color: #222;
+                  font-weight: 700;
+                  font-size: 14px;
+                }
+
+                .actions {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 12px;
+                }
+
+                .button {
+                  flex: 1 1 180px;
+                  display: inline-flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 8px;
+                  text-decoration: none;
+                  padding: 14px 18px;
+                  border-radius: 12px;
+                  font-weight: 600;
+                  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+                }
+
+                .button:hover {
+                  transform: translateY(-2px);
+                }
+
+                .button-primary {
+                  color: #fff;
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  box-shadow: 0 12px 24px rgba(102, 126, 234, 0.28);
+                }
+
+                .button-secondary {
+                  background: #f4f4f6;
+                  color: #2f3542;
+                }
+
+                .button-secondary:hover {
+                  background: #ececf1;
+                }
+
+                @media (max-width: 760px) {
+                  .hero {
+                    padding: 30px 22px;
+                  }
+
+                  .hero h1 {
+                    font-size: 28px;
+                  }
+
+                  .content {
+                    padding: 22px;
+                  }
+
+                  .summary,
+                  .quality-grid {
+                    grid-template-columns: 1fr;
+                  }
+                }
+
+                @media (max-width: 520px) {
+                  body {
+                    padding: 12px;
+                  }
+
+                  .hero {
+                    padding: 24px 18px;
+                  }
+
+                  .hero h1 {
+                    font-size: 24px;
+                  }
+
+                  .hero-badge {
+                    width: 66px;
+                    height: 66px;
+                    font-size: 32px;
+                  }
+
+                  .content {
+                    padding: 18px;
+                  }
+
+                  .actions {
+                    flex-direction: column;
+                  }
+                }
+              </style>
+            </head>
             <body>
-              <h1>✅ Upload Complete!</h1>
-              <p>Your image has been uploaded and optimized:</p>
-              <ul>
-                <li>📊 Lossy WebP: Quality ${lossyQuality}</li>
-                <li>🎨 Lossless WebP: Quality ${losslessQuality}</li>
-              </ul>
-              <h2>- <a href="/images">View images (/images)</a></h2>
-              <h2>- <a href="/uploads">Upload again (/uploads)</a></h2>
+              <div class="page">
+                <div class="card">
+                  <div class="hero">
+                    <div class="hero-badge">✅</div>
+                    <h1>Upload Complete</h1>
+                    <p>Your image has been uploaded successfully and optimized into WebP variants. Everything is ready for review.</p>
+                  </div>
+
+                  <div class="content">
+                    <div class="summary">
+                      <div class="summary-card">
+                        <div class="summary-label">Original file</div>
+                        <div class="summary-value">${escapeHtml(req.file.originalname)}</div>
+                      </div>
+                      <div class="summary-card">
+                        <div class="summary-label">Saved as</div>
+                        <div class="summary-value">${escapeHtml(req.file.filename)}</div>
+                      </div>
+                      <div class="summary-card">
+                        <div class="summary-label">Gallery</div>
+                        <div class="summary-value">User ${userId}</div>
+                      </div>
+                    </div>
+
+                    <div class="info-box">
+                      <strong>Finished:</strong> the original image has been stored and two WebP outputs were generated using your selected quality settings.
+                    </div>
+
+                    <div class="quality-grid">
+                      <div class="quality-card lossy">
+                        <h2>📊 Lossy WebP</h2>
+                        <p>Optimized for smaller file size and faster delivery while keeping visual quality high.</p>
+                        <div class="quality-score">Quality ${lossyQuality}</div>
+                      </div>
+                      <div class="quality-card lossless">
+                        <h2>🎨 Lossless WebP</h2>
+                        <p>Preserves image fidelity with minimal compromise, ideal when exact detail matters.</p>
+                        <div class="quality-score">Quality ${losslessQuality}</div>
+                      </div>
+                    </div>
+
+                    <div class="actions">
+                      <a class="button button-primary" href="/images/${userId}/html">View images</a>
+                      <a class="button button-secondary" href="/uploads">Upload another image</a>
+                      <a class="button button-secondary" href="/">Back to app</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </body>
             </html>
           `;
@@ -146,6 +432,15 @@ function mapUploadError(err: unknown): HttpError {
   }
 
   return createHttpError(500, 'Saving image failed. Please try again.');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export = UploadService;
