@@ -1,8 +1,10 @@
-import FileHelperSync = require('./../utils/fileHelperSync');
+import ImageService = require('./../services/imageService');
+
+const imageService = new ImageService();
 
 class Image {
   getImageDirectories(): string {
-    const links = FileHelperSync.getDirectories(process.env.UPLOADS_FOLDER!).map(dir => {
+    const links = imageService.getDirectories().map(dir => {
       return `<li><h3>${dir} - <a href=images/${dir}/html?auth=${dir}>HTML</a> / <a href=images/${dir}/json?auth=${dir}>JSON</a></<br></h3></li>`;
     });
     const isEmpty = links.length ? `:` : ` is empty. Upload some images on <a href="/uploads">/uploads</a>.`;
@@ -20,7 +22,7 @@ class Image {
 
   getDirectoryHtml(folderId: number): string {
     let imagesHtml = "";
-    FileHelperSync.getFiles(`${process.env.UPLOADS_FOLDER!}/${folderId}`).forEach(file => {
+    imageService.getDirectoryFiles(folderId).forEach(file => {
       imagesHtml += `<img src="../../${folderId}/${file}" alt="${file}" title="${file}" onload="doneLoading('${file}')">`;
     });
 
@@ -44,7 +46,7 @@ class Image {
 
   getDirectoryJson(folderId: number): { images: string[] } {
     return {
-      images: FileHelperSync.getFiles(`${process.env.UPLOADS_FOLDER!}/${folderId}`)
+      images: imageService.getDirectoryFiles(folderId)
     };
   }
 }
