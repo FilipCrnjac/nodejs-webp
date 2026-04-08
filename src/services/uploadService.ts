@@ -8,10 +8,10 @@ import FileHelperSync = require('./../utils/fileHelperSync');
 import createHttpError = require('./../utils/httpError');
 
 type HttpError = Error & { status: number };
-type AuthenticatedUploadRequest = Request & { userId: number };
+type AuthenticatedUploadRequest = Request & { userId: number; body?: { lossyQuality?: string; losslessQuality?: string } };
 
 const supportedImageFormats = new Set(['image/png', 'image/jpeg']);
-const quality = 75;
+const defaultQuality = 75;
 const maxUploadSizeBytes = 10 * 1024 * 1024;
 
 class UploadService {
@@ -48,7 +48,7 @@ class UploadService {
       multerUpload(req, res, async err => {
         if (err) {
           console.log(err);
-          cleanupUploadArtifacts(req.file && req.file.path, quality);
+          cleanupUploadArtifacts(req.file && req.file.path, defaultQuality);
           return reject(mapUploadError(err));
         }
 
@@ -57,16 +57,30 @@ class UploadService {
         }
 
         try {
+          // Parse quality settings from form data
+          const lossyQualityStr = (req.body?.lossyQuality || String(defaultQuality)).toString().trim();
+          const losslessQualityStr = (req.body?.losslessQuality || String(defaultQuality)).toString().trim();
+
+          const lossyQuality = Math.max(1, Math.min(100, parseInt(lossyQualityStr, 10) || defaultQuality));
+          const losslessQuality = Math.max(1, Math.min(100, parseInt(losslessQualityStr, 10) || defaultQuality));
+
+          console.log(`📊 Upload quality settings - Lossy: ${lossyQuality}, Lossless: ${losslessQuality}`);
+
           const startTimeConversion = process.hrtime();
-          await runConvertConcurrently(req, quality);
+          await runConvertConcurrently(req, lossyQuality, losslessQuality);
           logExecutionTime(startTimeConversion, 'Concurrent conversion');
 
           const html = `
             <!DOCTYPE html>
             <html lang="en">
-            <head><meta charset="UTF-8"><title>MY APP</title></head>
+            <head><meta charset="UTF-8"><title>Upload Complete</title></head>
             <body>
-              <h1>Path: /uploads</h1>
+              <h1>✅ Upload Complete!</h1>
+              <p>Your image has been uploaded and optimized:</p>
+              <ul>
+                <li>📊 Lossy WebP: Quality ${lossyQuality}</li>
+                <li>🎨 Lossless WebP: Quality ${losslessQuality}</li>
+              </ul>
               <h2>- <a href="/images">View images (/images)</a></h2>
               <h2>- <a href="/uploads">Upload again (/uploads)</a></h2>
             </body>
@@ -76,7 +90,7 @@ class UploadService {
           resolve(html);
         } catch (conversionError) {
           console.log(conversionError);
-          cleanupUploadArtifacts(req.file.path, quality);
+          cleanupUploadArtifacts(req.file.path, defaultQuality);
           reject(createHttpError(500, 'Image conversion failed. Please try again.'));
         }
       });
@@ -84,10 +98,10 @@ class UploadService {
   }
 }
 
-function runConvertConcurrently(req: AuthenticatedUploadRequest, qualityValue: number): Promise<string[]> {
+function runConvertConcurrently(req: AuthenticatedUploadRequest, lossyQuality: number, losslessQuality: number): Promise<string[]> {
   return Promise.all([
-    Webp.convertLossy(req.file!.path, req.file!.destination, qualityValue),
-    Webp.convertLossless(req.file!.path, req.file!.destination, qualityValue)
+    Webp.convertLossy(req.file!.path, req.file!.destination, lossyQuality),
+    Webp.convertLossless(req.file!.path, req.file!.destination, losslessQuality)
   ]);
 }
 

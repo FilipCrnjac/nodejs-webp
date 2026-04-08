@@ -371,7 +371,7 @@ class Upload {
               <strong>💡 Tip:</strong> Your images will be automatically optimized and converted to WebP format in both lossy and lossless variants.
             </div>
 
-            <form id="uploadForm" enctype="multipart/form-data">
+          <form id="uploadForm" enctype="multipart/form-data">
               <div class="form-group">
                 <label>Select Image File</label>
                 <div class="file-input-wrapper">
@@ -399,6 +399,67 @@ class Upload {
                     <div class="file-info-item">
                       <div class="file-info-label">File Type</div>
                       <div class="file-info-value" id="fileType"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Image Preview -->
+              <div class="form-group" id="previewSection" style="display: none;">
+                <label>Preview</label>
+                <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; text-align: center;">
+                  <img id="imagePreview" style="max-width: 100%; max-height: 300px; border-radius: 6px;" alt="Preview">
+                </div>
+              </div>
+
+              <!-- Quality Settings -->
+              <div class="form-group" id="qualitySection" style="display: none;">
+                <label>WebP Quality Settings</label>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                  <!-- Lossy Quality -->
+                  <div style="background: #f9f7ff; border-radius: 8px; padding: 16px; border: 2px solid #e8e0ff;">
+                    <h4 style="color: #667eea; margin-bottom: 12px; font-size: 14px;">📊 Lossy</h4>
+                    <div style="margin-bottom: 12px;">
+                      <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
+                        <span>Quality Level</span>
+                        <span id="lossyQualityValue" style="font-weight: 600; color: #667eea;">75</span>
+                      </label>
+                      <input type="range" id="lossyQuality" min="1" max="100" value="75" style="width: 100%; cursor: pointer;">
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 4px; font-size: 11px; color: #666;">
+                      <div>Better compression</div>
+                      <div style="margin-top: 4px; color: #999;">Smaller file size</div>
+                    </div>
+                  </div>
+
+                  <!-- Lossless Quality -->
+                  <div style="background: #f5fff0; border-radius: 8px; padding: 16px; border: 2px solid #e0f2d4;">
+                    <h4 style="color: #4caf50; margin-bottom: 12px; font-size: 14px;">🎨 Lossless</h4>
+                    <div style="margin-bottom: 12px;">
+                      <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
+                        <span>Quality Level</span>
+                        <span id="losslessQualityValue" style="font-weight: 600; color: #4caf50;">75</span>
+                      </label>
+                      <input type="range" id="losslessQuality" min="1" max="100" value="75" style="width: 100%; cursor: pointer;">
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 4px; font-size: 11px; color: #666;">
+                      <div>Perfect quality</div>
+                      <div style="margin-top: 4px; color: #999;">Larger file size</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Savings Preview -->
+                <div id="savingsPreview" style="background: #fff8e1; border-left: 4px solid #fbc02d; padding: 16px; border-radius: 6px; display: none;">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div>
+                      <div style="font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Original Size</div>
+                      <div style="font-size: 18px; font-weight: 600; color: #333;" id="originalSize">-</div>
+                    </div>
+                    <div>
+                      <div style="font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Estimated Savings</div>
+                      <div style="font-size: 18px; font-weight: 600; color: #4caf50;" id="estimatedSavings">-</div>
                     </div>
                   </div>
                 </div>
@@ -446,8 +507,27 @@ class Upload {
           const progressSection = document.getElementById('progressSection');
           const statusDiv = document.getElementById('status');
           const submitBtn = document.getElementById('submitBtn');
+          const previewSection = document.getElementById('previewSection');
+          const qualitySection = document.getElementById('qualitySection');
+          const lossyQuality = document.getElementById('lossyQuality');
+          const losslessQuality = document.getElementById('losslessQuality');
+          const lossyQualityValue = document.getElementById('lossyQualityValue');
+          const losslessQualityValue = document.getElementById('losslessQualityValue');
+          const savingsPreview = document.getElementById('savingsPreview');
 
           const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+          let currentFileSize = 0;
+
+          // Quality slider events
+          lossyQuality.addEventListener('input', (e) => {
+            lossyQualityValue.textContent = e.target.value;
+            updateSavingsEstimate();
+          });
+
+          losslessQuality.addEventListener('input', (e) => {
+            losslessQualityValue.textContent = e.target.value;
+            updateSavingsEstimate();
+          });
 
           // Drag and drop
           fileLabel.addEventListener('dragover', (e) => {
@@ -475,6 +555,8 @@ class Upload {
             const file = fileInput.files?.[0];
             if (!file) {
               selectedFile.classList.remove('show');
+              previewSection.style.display = 'none';
+              qualitySection.style.display = 'none';
               return;
             }
 
@@ -483,6 +565,8 @@ class Upload {
               showStatus('error', '❌ Please select a valid image file');
               fileInput.value = '';
               selectedFile.classList.remove('show');
+              previewSection.style.display = 'none';
+              qualitySection.style.display = 'none';
               return;
             }
 
@@ -490,8 +574,13 @@ class Upload {
               showStatus('error', '❌ File size exceeds 50MB limit');
               fileInput.value = '';
               selectedFile.classList.remove('show');
+              previewSection.style.display = 'none';
+              qualitySection.style.display = 'none';
               return;
             }
+
+            // Store file size for savings calculation
+            currentFileSize = file.size;
 
             // Show file info
             document.getElementById('selectedFileName').textContent = '✓ ' + file.name;
@@ -500,6 +589,30 @@ class Upload {
             selectedFile.classList.add('show');
             statusDiv.classList.remove('show');
             progressSection.classList.remove('show');
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              document.getElementById('imagePreview').src = e.target?.result || '';
+              previewSection.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // Show quality settings
+            qualitySection.style.display = 'block';
+            updateSavingsEstimate();
+          }
+
+          function updateSavingsEstimate() {
+            if (currentFileSize === 0) return;
+
+            // Rough estimation: WebP typically saves 25-35% of size
+            const savingsPercentage = 30;
+            const estimatedSavings = (currentFileSize * savingsPercentage) / 100;
+            
+            document.getElementById('originalSize').textContent = formatFileSize(currentFileSize);
+            document.getElementById('estimatedSavings').textContent = formatFileSize(estimatedSavings) + ' (~' + savingsPercentage + '%)';
+            savingsPreview.style.display = 'block';
           }
 
           uploadForm.addEventListener('submit', async (e) => {
@@ -511,6 +624,10 @@ class Upload {
               return;
             }
 
+            // Get quality settings
+            const lossyQualityValue = parseInt(lossyQuality.value, 10);
+            const losslessQualityValue = parseInt(losslessQuality.value, 10);
+
             // Start upload
             progressSection.classList.add('show');
             statusDiv.classList.remove('show');
@@ -518,6 +635,8 @@ class Upload {
 
             const formData = new FormData();
             formData.append('myImage', file);
+            formData.append('lossyQuality', String(lossyQualityValue));
+            formData.append('losslessQuality', String(losslessQualityValue));
 
             const token = localStorage.getItem('access_token') || '';
             const headers = {};
@@ -566,9 +685,11 @@ class Upload {
               progressSection.classList.remove('show');
 
               if (xhr.status === 200) {
-                showStatus('success', '✅ Image uploaded successfully! Processing optimization...');
+                showStatus('success', '✅ Image uploaded successfully! Processing with selected quality settings...');
                 uploadForm.reset();
                 selectedFile.classList.remove('show');
+                previewSection.style.display = 'none';
+                qualitySection.style.display = 'none';
                 setTimeout(() => {
                   window.location.href = '/';
                 }, 2000);
