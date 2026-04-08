@@ -27,9 +27,7 @@ class Image {
       const fileUrl = `/images/${folderId}/files/${safeFile}`;
       imagesHtml += `
         <figure class="image-card">
-          <a href="${fileUrl}" target="_blank" rel="noopener" title="Open full size">
-            <img src="${fileUrl}" alt="${file.name}" onload="doneLoading('${file.name}')">
-          </a>
+          <img src="${fileUrl}" alt="${file.name}" onload="doneLoading('${file.name}')" onclick="openLightbox('${fileUrl}', '${file.name.replace(/'/g, "\\'")}')" title="Click to enlarge">
           <figcaption class="image-meta">${file.name}<br>${formatFileSize(file.sizeBytes)}</figcaption>
         </figure>
       `;
@@ -60,10 +58,45 @@ class Image {
             object-fit: contain;
             display: block;
             background: #f5f5f5;
-            cursor: pointer;
+            cursor: zoom-in;
             transition: opacity 0.15s;
           }
-          .image-card a:hover img { opacity: 0.85; }
+          .image-card img:hover { opacity: 0.85; }
+          /* Lightbox */
+          #lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.88);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+          }
+          #lightbox.open { display: flex; }
+          #lightbox img {
+            max-width: 92vw;
+            max-height: 82vh;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.6);
+          }
+          #lightbox-caption {
+            color: #eee;
+            margin-top: 12px;
+            font-size: 14px;
+            text-align: center;
+          }
+          #lightbox-close {
+            position: absolute;
+            top: 16px;
+            right: 24px;
+            font-size: 36px;
+            color: #fff;
+            cursor: pointer;
+            line-height: 1;
+            user-select: none;
+          }
           .image-meta {
             margin-top: 8px;
             font-size: 13px;
@@ -86,7 +119,23 @@ class Image {
             let loadTime = new Date().getTime() - startTime;
             console.log("Image ["+ name + "] took " + loadTime + "ms to load");
           }
+          function openLightbox(url, name) {
+            const lb = document.getElementById('lightbox');
+            document.getElementById('lightbox-img').src = url;
+            document.getElementById('lightbox-caption').textContent = name;
+            lb.classList.add('open');
+          }
+          function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('open');
+            document.getElementById('lightbox-img').src = '';
+          }
+          document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
         </script>
+        <div id="lightbox" onclick="closeLightbox()">
+          <span id="lightbox-close" onclick="closeLightbox()">&times;</span>
+          <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+          <div id="lightbox-caption"></div>
+        </div>
         <h1>Path: /images/${folderId}/html</h1>
         <h2><a href="/">HOME</a></h2><br>
         <div class="gallery">${imagesHtml}</div>
