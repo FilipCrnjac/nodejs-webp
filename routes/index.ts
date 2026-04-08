@@ -6,82 +6,412 @@ const router = express.Router();
 router.get('/', function(req: Request, res: Response) {
   const html = `
     <!DOCTYPE html>
-    <html><body>
-    <h1>Path: /</h1>
-    <h2><a href=/login>/login</a></h2>
-    <h2><a href=/images>/images</a></h2>
-    <h2><a href=/uploads>/uploads</a></h2>
-    <h3>Login first on /login</h3>
-    </body></html>
-  `;
-
-  return res.type('.html').send(html);
-});
-
-router.get('/login', function(req: Request, res: Response) {
-  const html = `
-    <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <title>Login</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Image Upload App</title>
       <style>
-        body { font-family: Arial, sans-serif; }
-        .card { width: min(500px, 95vw); border: 1px solid #ddd; border-radius: 8px; padding: 16px; }
-        input { width: 100%; padding: 8px; margin: 8px 0; box-sizing: border-box; }
-        button { padding: 10px 14px; margin-right: 6px; }
-        pre { background: #f6f8fa; padding: 10px; overflow: auto; }
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+
+        .container {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          max-width: 800px;
+          width: 100%;
+          overflow: hidden;
+        }
+
+        .header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 40px 20px;
+          text-align: center;
+        }
+
+        .header h1 {
+          font-size: 32px;
+          margin-bottom: 8px;
+          font-weight: 600;
+        }
+
+        .header p {
+          font-size: 14px;
+          opacity: 0.9;
+        }
+
+        .tabs {
+          display: flex;
+          border-bottom: 1px solid #e0e0e0;
+          background: #f5f5f5;
+        }
+
+        .tab-button {
+          flex: 1;
+          padding: 16px 20px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          color: #666;
+          transition: all 0.3s ease;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          border-bottom: 3px solid transparent;
+        }
+
+        .tab-button:hover {
+          background: #eee;
+          color: #333;
+        }
+
+        .tab-button.active {
+          color: #667eea;
+          border-bottom-color: #667eea;
+          background: white;
+        }
+
+        .content {
+          padding: 40px 30px;
+          display: none;
+          animation: fadeIn 0.3s ease;
+        }
+
+        .content.active {
+          display: block;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .content h2 {
+          color: #333;
+          margin-bottom: 20px;
+          font-size: 24px;
+        }
+
+        .content p {
+          color: #666;
+          line-height: 1.6;
+          margin-bottom: 20px;
+        }
+
+        .cta-button {
+          display: inline-block;
+          padding: 12px 28px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          text-decoration: none;
+          border-radius: 6px;
+          font-weight: 500;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          border: none;
+          cursor: pointer;
+          font-size: 14px;
+        }
+
+        .cta-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .status {
+          display: inline-block;
+          padding: 8px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+          margin-top: 10px;
+        }
+
+        .status.logged-out {
+          background: #ffebee;
+          color: #c62828;
+        }
+
+        .status.logged-in {
+          background: #e8f5e9;
+          color: #2e7d32;
+        }
+
+        .info-box {
+          background: #f0f4ff;
+          border-left: 4px solid #667eea;
+          padding: 16px;
+          border-radius: 6px;
+          margin: 20px 0;
+        }
+
+        .info-box strong {
+          color: #667eea;
+        }
+
+        .footer {
+          background: #f5f5f5;
+          padding: 20px;
+          text-align: center;
+          color: #999;
+          font-size: 12px;
+          border-top: 1px solid #e0e0e0;
+        }
+
+        @media (max-width: 600px) {
+          .header {
+            padding: 30px 15px;
+          }
+
+          .header h1 {
+            font-size: 24px;
+          }
+
+          .tab-button {
+            padding: 12px 10px;
+            font-size: 12px;
+          }
+
+          .content {
+            padding: 25px 15px;
+          }
+        }
       </style>
     </head>
     <body>
-      <h1>Path: /login</h1>
-      <h2><a href="/">HOME</a></h2>
-      <div class="card">
-        <label>Username</label>
-        <input id="username" value="user1" />
-        <label>Password</label>
-        <input id="password" type="password" value="password1" />
-        <button onclick="login()">Login</button>
-        <button onclick="refreshToken()">Refresh token</button>
-        <button onclick="logout()">Logout</button>
-        <h3>Access token</h3>
-        <pre id="token">(none)</pre>
-        <p><a id="my-images-link" href="#" style="display:none;font-size:16px;">My images</a></p>
+      <div class="container">
+        <div class="header">
+          <h1>🖼️ Image Upload Studio</h1>
+          <p>Share, manage, and optimize your images</p>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-button active" onclick="switchTab(event, 'home')">Home</button>
+          <button class="tab-button" onclick="switchTab(event, 'login')">Account</button>
+          <button class="tab-button" onclick="switchTab(event, 'upload')">Upload</button>
+          <button class="tab-button" onclick="switchTab(event, 'gallery')">Gallery</button>
+        </div>
+
+        <!-- HOME TAB -->
+        <div id="home" class="content active">
+          <h2>Welcome to Image Upload Studio</h2>
+          <p>Your personal image management platform with WebP optimization and secure authentication.</p>
+          
+          <div class="info-box">
+            <strong>✨ Features:</strong>
+            <ul style="margin: 10px 0 0 20px; color: #333;">
+              <li>📤 Upload and optimize images automatically</li>
+              <li>🎨 WebP conversion with lossless & lossy options</li>
+              <li>🔒 Secure authentication with JWT tokens</li>
+              <li>👤 Personal gallery per user</li>
+              <li>🗑️ Easy image management</li>
+            </ul>
+          </div>
+
+          <p style="margin-top: 30px;">
+            <strong>Get started:</strong> Sign in or register to manage your images.
+          </p>
+          <button class="cta-button" onclick="switchTab(event, 'login')">Go to Account →</button>
+        </div>
+
+        <!-- LOGIN/REGISTER TAB -->
+        <div id="login" class="content">
+          <h2>Account</h2>
+          
+          <div style="margin: 20px 0;">
+            <div>
+              <label style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Username</label>
+              <input id="username" type="text" value="user1" 
+                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;" />
+            </div>
+
+            <div style="margin-top: 16px;">
+              <label style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Password</label>
+              <input id="password" type="password" value="password1" 
+                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;" />
+            </div>
+
+            <div style="margin-top: 24px; display: flex; gap: 10px;">
+              <button class="cta-button" onclick="login()" style="flex: 1; text-align: center;">Sign In</button>
+              <button class="cta-button" onclick="register()" style="flex: 1; text-align: center; background: #764ba2;">Register</button>
+            </div>
+
+            <div style="margin-top: 16px; display: flex; gap: 10px;">
+              <button class="cta-button" onclick="refreshToken()" style="flex: 1; background: #888;">Refresh Token</button>
+              <button class="cta-button" onclick="logout()" style="flex: 1; background: #d32f2f;">Sign Out</button>
+            </div>
+          </div>
+
+          <div style="margin-top: 30px;">
+            <h3 style="color: #333; margin-bottom: 12px;">Status</h3>
+            <div id="status" class="status logged-out">Not authenticated</div>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <h3 style="color: #333; margin-bottom: 12px;">Access Token</h3>
+            <pre id="token" style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 11px; color: #666;">(none)</pre>
+          </div>
+        </div>
+
+        <!-- UPLOAD TAB -->
+        <div id="upload" class="content">
+          <h2>Upload Image</h2>
+          <p>Upload your images and we'll automatically optimize them for web.</p>
+          
+          <div class="info-box">
+            <strong>ℹ️ Note:</strong> You must be logged in to upload images. Navigate to the <strong>Account</strong> tab to sign in.
+          </div>
+
+          <div style="margin-top: 30px;">
+            <form action="/uploads" method="POST" enctype="multipart/form-data">
+              <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; color: #333; font-weight: 500;">Select Image</label>
+                <input type="file" name="file" accept="image/*" required
+                       style="display: block; width: 100%; padding: 12px; border: 2px dashed #667eea; border-radius: 6px; cursor: pointer;" />
+              </div>
+              <button type="submit" class="cta-button" style="width: 100%; text-align: center;">Upload & Optimize</button>
+            </form>
+          </div>
+
+          <div style="margin-top: 30px;">
+            <h3 style="color: #333; margin-bottom: 12px;">Supported Formats</h3>
+            <p style="color: #666;">JPG, PNG, GIF, WebP</p>
+          </div>
+        </div>
+
+        <!-- GALLERY TAB -->
+        <div id="gallery" class="content">
+          <h2>My Gallery</h2>
+          <p>View and manage your uploaded images.</p>
+          
+          <div class="info-box">
+            <strong>ℹ️ Note:</strong> Sign in to see your personal gallery.
+          </div>
+
+          <p id="gallery-link-container" style="margin-top: 20px; display: none;">
+            <a id="my-images-link" href="#" class="cta-button">Open My Gallery →</a>
+          </p>
+        </div>
+
+        <div class="footer">
+          <p>© 2026 Image Upload Studio. All images are securely stored and optimized.</p>
+        </div>
       </div>
+
       <script>
+        function switchTab(event, tabName) {
+          event?.preventDefault?.();
+
+          // Hide all tabs
+          const contents = document.querySelectorAll('.content');
+          contents.forEach(content => content.classList.remove('active'));
+
+          // Remove active state from all buttons
+          const buttons = document.querySelectorAll('.tab-button');
+          buttons.forEach(button => button.classList.remove('active'));
+
+          // Show selected tab
+          document.getElementById(tabName).classList.add('active');
+
+          // Add active state to clicked button
+          event?.target?.classList.add('active');
+        }
+
         function setToken(value) {
           localStorage.setItem('access_token', value || '');
-          document.getElementById('token').textContent = value || '(none)';
+          const tokenEl = document.getElementById('token');
+          const statusEl = document.getElementById('status');
+          if (value) {
+            tokenEl.textContent = value;
+            statusEl.textContent = '✓ Authenticated';
+            statusEl.className = 'status logged-in';
+          } else {
+            tokenEl.textContent = '(none)';
+            statusEl.textContent = '✗ Not authenticated';
+            statusEl.className = 'status logged-out';
+          }
+          updateGalleryLink();
+        }
+
+        async function register() {
+          const username = document.getElementById('username').value;
+          const password = document.getElementById('password').value;
+          
+          if (!username || !password) {
+            alert('Please enter username and password');
+            return;
+          }
+
+          const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+          const body = await response.json();
+          
+          if (!response.ok) {
+            alert(body.message || 'Registration failed');
+            return;
+          }
+          
+          localStorage.setItem('user_id', String(body.userId || ''));
+          setToken(body.token || '');
+          alert('Registration successful!');
         }
 
         async function login() {
           const username = document.getElementById('username').value;
           const password = document.getElementById('password').value;
+
           const response = await fetch('/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
           });
           const body = await response.json();
+          
           if (!response.ok) {
             alert(body.message || 'Login failed');
             return;
           }
+          
           localStorage.setItem('user_id', String(body.userId || ''));
           setToken(body.token || '');
-          updateMyImagesLink();
+          alert('Welcome!');
         }
 
-        function updateMyImagesLink() {
+        function updateGalleryLink() {
           const userId = localStorage.getItem('user_id') || '';
+          const container = document.getElementById('gallery-link-container');
           const link = document.getElementById('my-images-link');
-          if (!link) return;
+          
           if (userId) {
             link.href = '/images/' + userId + '/html';
-            link.textContent = 'My images (user ' + userId + ')';
-            link.style.display = '';
+            link.textContent = '👤 Open My Gallery (User ' + userId + ') →';
+            container.style.display = '';
           } else {
-            link.style.display = 'none';
+            container.style.display = 'none';
           }
         }
 
@@ -92,32 +422,30 @@ router.get('/login', function(req: Request, res: Response) {
             body: JSON.stringify({})
           });
           const body = await response.json();
+          
           if (!response.ok) {
             alert(body.message || 'Refresh failed');
             return;
           }
+          
           setToken(body.token || '');
-          alert('Token refreshed');
+          alert('Token refreshed!');
         }
 
         async function logout() {
-          const token = localStorage.getItem('access_token') || '';
-          await fetch('/auth/logout', {
+          const response = await fetch('/auth/logout', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: 'Bearer ' + token } : {})
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
           });
+          
           setToken('');
           localStorage.removeItem('user_id');
-          updateMyImagesLink();
-          alert('Logged out');
+          alert('Signed out successfully!');
         }
 
+        // Initialize on page load
         setToken(localStorage.getItem('access_token') || '');
-        updateMyImagesLink();
       </script>
     </body>
     </html>
@@ -125,5 +453,6 @@ router.get('/login', function(req: Request, res: Response) {
 
   return res.type('.html').send(html);
 });
+
 
 export = router;
