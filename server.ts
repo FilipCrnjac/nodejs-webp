@@ -2,6 +2,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import path from 'path';
 
 import auth = require('./src/auth/auth');
+import authRouter = require('./routes/auth');
 import indexRouter = require('./routes/index');
 import uploadsRouter = require('./routes/uploads');
 import imagesRouter = require('./routes/images');
@@ -15,8 +16,10 @@ process.env.UPLOADS_FOLDER = process.env.UPLOADS_FOLDER || path.join(__dirname, 
 function createApp() {
   const app = express();
 
+  app.use(express.json());
 
   app.use('/', indexRouter);
+  app.use('/auth', authRouter);
   app.use('/uploads', uploadsRouter);
   // Auth middleware example of securing /images* routes -> check is user authenticated
   app.use('/images', auth.isAuthenticated, imagesRouter);

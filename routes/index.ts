@@ -8,8 +8,9 @@ router.get('/', function(req: Request, res: Response) {
     <!DOCTYPE html>
     <html><body>
     <h1>Path: /</h1>
-    <h2><a href=/images?auth=1>/images</a></h2>
+    <h2><a href=/images>/images</a></h2>
     <h2><a href=/uploads>/uploads</a></h2>
+    <h3>Login first: POST /auth/login</h3>
     </body></html>
   `;
 

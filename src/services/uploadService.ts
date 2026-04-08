@@ -66,9 +66,9 @@ class UploadService {
             <html lang="en">
             <head><meta charset="UTF-8"><title>MY APP</title></head>
             <body>
-              <h1>Path: /uploads?auth=${userId}</h1>
-              <h2>- <a href="/images?auth=${userId}">View images (/images)</a></h2>
-              <h2>- <a href="/uploads?auth=${userId}">Upload again (/uploads)</a></h2>
+              <h1>Path: /uploads</h1>
+              <h2>- <a href="/images">View images (/images)</a></h2>
+              <h2>- <a href="/uploads">Upload again (/uploads)</a></h2>
             </body>
             </html>
           `;

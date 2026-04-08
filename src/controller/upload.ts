@@ -42,18 +42,35 @@ class Upload {
       </style>
       <body>    
       <script>
-        function submitUploadPhotoForm(){
-          const userId = + document.getElementsByName("userId")[0].value;
+        async function submitUploadPhotoForm(event){
+          event.preventDefault();
+          const token = document.getElementsByName("token")[0].value.trim();
+          if (!token) {
+            alert('Provide bearer token from /auth/login first.');
+            return;
+          }
+
           const uploadPhotoForm = document.getElementById('uploadPhotoForm');
-          uploadPhotoForm.action = "/uploads?auth=" + userId;
+          const formData = new FormData(uploadPhotoForm);
+          const response = await fetch('/uploads', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + token
+            },
+            body: formData
+          });
+          const body = await response.text();
+          document.open();
+          document.write(body);
+          document.close();
         }
       </script>
         <h1>Path: /uploads</h1>
         <h2><a href="/">HOME</a></h2><br>
         <div>
-        <form id = "uploadPhotoForm" action="" enctype="multipart/form-data" method="POST" onsubmit="submitUploadPhotoForm()"> 
-          <label for="userId" class="pad">User ID</label><br>
-          <input type="text" name="userId" class="pad" placeholder="ID"><br>
+        <form id = "uploadPhotoForm" action="" enctype="multipart/form-data" method="POST" onsubmit="submitUploadPhotoForm(event)"> 
+          <label for="token" class="pad">Bearer Token</label><br>
+          <input type="text" name="token" class="pad" placeholder="eyJhb..." style="width: 100%"><br>
           <input type="file" name="myImage" class="pad" accept="image/*" /><br>
           <input type="submit" class="pad" value="Upload Photo"/>
         </form>
