@@ -18,7 +18,7 @@ function createUrl(pathname: string): string {
   return new URL(pathname, baseUrl).toString();
 }
 
-async function login(username: string, password: string): Promise<{ token: string; userId: number }> {
+async function login(username: string, password: string): Promise<{ token: string; refreshToken: string; userId: number }> {
   const response = await fetch(createUrl('/auth/login'), {
     method: 'POST',
     headers: {
@@ -28,8 +28,9 @@ async function login(username: string, password: string): Promise<{ token: strin
   });
 
   assert.equal(response.status, 200);
-  const body = await response.json() as { token: string; userId: number };
+  const body = await response.json() as { token: string; refreshToken: string; userId: number };
   assert.equal(typeof body.token, 'string');
+  assert.equal(typeof body.refreshToken, 'string');
 
   return body;
 }
@@ -70,7 +71,17 @@ test('GET / returns the home page', async () => {
 
   assert.equal(response.status, 200);
   assert.match(html, /Path: \/</);
+  assert.match(html, /\/login/);
   assert.match(html, /\/uploads/);
+});
+
+test('GET /login returns login screen', async () => {
+  const response = await fetch(createUrl('/login'));
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /Path: \/login/);
+  assert.match(html, /Login/);
 });
 
 test('GET /images without auth returns 401 JSON', async () => {
@@ -93,6 +104,90 @@ test('POST /auth/login rejects invalid credentials', async () => {
 
   assert.equal(response.status, 401);
   assert.deepEqual(body, { error: true, message: 'Invalid credentials.' });
+});
+
+test('POST /auth/login rate limits repeated failed attempts', async () => {
+  const user = 'rate-limit-user';
+
+  for (let i = 0; i < 5; i += 1) {
+    const response = await fetch(createUrl('/auth/login'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username: user, password: 'wrong' })
+    });
+
+    assert.equal(response.status, 401);
+  }
+
+  const blocked = await fetch(createUrl('/auth/login'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ username: user, password: 'wrong' })
+  });
+  const body = await blocked.json();
+
+  assert.equal(blocked.status, 429);
+  assert.deepEqual(body, { error: true, message: 'Too many login attempts. Please try again later.' });
+});
+
+test('POST /auth/refresh rotates tokens and keeps access valid', async () => {
+  const loginResult = await login('user1', 'password1');
+
+  const response = await fetch(createUrl('/auth/refresh'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ refreshToken: loginResult.refreshToken })
+  });
+  const body = await response.json() as { token: string; refreshToken: string };
+
+  assert.equal(response.status, 200);
+  assert.notEqual(body.token, loginResult.token);
+  assert.notEqual(body.refreshToken, loginResult.refreshToken);
+
+  const protectedResponse = await fetch(createUrl('/images/1/json'), {
+    headers: {
+      Authorization: `Bearer ${body.token}`
+    }
+  });
+  assert.notEqual(protectedResponse.status, 401);
+});
+
+test('POST /auth/logout revokes refresh token and current access token', async () => {
+  const loginResult = await login('user1', 'password1');
+
+  const logoutResponse = await fetch(createUrl('/auth/logout'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${loginResult.token}`
+    },
+    body: JSON.stringify({ refreshToken: loginResult.refreshToken })
+  });
+  const logoutBody = await logoutResponse.json();
+  assert.equal(logoutResponse.status, 200);
+  assert.deepEqual(logoutBody, { success: true });
+
+  const refreshResponse = await fetch(createUrl('/auth/refresh'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ refreshToken: loginResult.refreshToken })
+  });
+  assert.equal(refreshResponse.status, 401);
+
+  const protectedResponse = await fetch(createUrl('/images/1/json'), {
+    headers: {
+      Authorization: `Bearer ${loginResult.token}`
+    }
+  });
+  assert.equal(protectedResponse.status, 401);
 });
 
 test('GET /images/:id/json forbids access to another users folder', async () => {
