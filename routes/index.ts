@@ -425,7 +425,7 @@ router.get('/', function(req: Request, res: Response) {
           <h2>My Gallery</h2>
           <p>View and manage your uploaded images.</p>
           
-          <div class="info-box">
+          <div id="gallery-login-note" class="info-box">
             <strong>ℹ️ Note:</strong> Sign in to see your personal gallery.
           </div>
 
@@ -627,13 +627,20 @@ router.get('/', function(req: Request, res: Response) {
           const userId = localStorage.getItem('user_id') || '';
           const container = document.getElementById('gallery-link-container');
           const link = document.getElementById('my-images-link');
+          const note = document.getElementById('gallery-login-note');
           
           if (userId) {
             link.href = '/images/' + userId + '/html';
             link.textContent = '👤 Open My Gallery (User ' + userId + ') →';
             container.style.display = '';
+            if (note) {
+              note.style.display = 'none';
+            }
           } else {
             container.style.display = 'none';
+            if (note) {
+              note.style.display = '';
+            }
           }
         }
 
