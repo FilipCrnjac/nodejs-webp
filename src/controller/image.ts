@@ -815,7 +815,7 @@ class Image {
             border-radius: 8px;
             overflow: hidden;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
             border: 1px solid #f0f0f0;
             display: flex;
             flex-direction: column;
@@ -824,8 +824,8 @@ class Image {
           }
 
           .image-group-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 22px rgba(37, 55, 120, 0.12);
             border-color: #667eea;
           }
 
@@ -835,6 +835,8 @@ class Image {
             padding-bottom: 100%;
             overflow: hidden;
             background: #f5f5f5;
+            border-radius: 6px;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
           }
 
           .group-preview-grid {
@@ -852,6 +854,10 @@ class Image {
           .image-wrapper.small {
             padding-bottom: 0;
             min-height: 112px;
+          }
+
+          .image-wrapper:hover {
+            box-shadow: inset 0 0 0 1px rgba(102, 126, 234, 0.35);
           }
 
           .image-wrapper.small img {
@@ -900,16 +906,16 @@ class Image {
             pointer-events: none;
           }
 
-          .image-group-card:hover .image-overlay {
-            background: rgba(102, 126, 234, 0.4);
+          .image-wrapper:hover .image-overlay {
+            background: rgba(102, 126, 234, 0.22);
             opacity: 1;
           }
 
           .zoom-icon {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             color: white;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.22));
           }
 
           .image-group-meta {
