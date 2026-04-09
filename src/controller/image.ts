@@ -1278,6 +1278,13 @@ class Image {
           <div class="variant-card">
             <div class="variant-preview">
               <img src="${variantUrl}" alt="${escapeHtml(variant.name)}">
+              <div class="variant-overlay">
+                <svg class="variant-zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                  <path d="M11 8v6M8 11h6"></path>
+                </svg>
+              </div>
             </div>
             <div class="variant-name">${escapeHtml(variant.name)}</div>
             <div class="variant-size">${formatFileSize(variant.sizeBytes)}</div>
@@ -1391,6 +1398,7 @@ class Image {
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 10px;
+            cursor: zoom-in;
           }
 
           .variant-preview img {
@@ -1401,6 +1409,30 @@ class Image {
             height: 100%;
             object-fit: contain;
             padding: 6px;
+          }
+
+          .variant-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(102, 126, 234, 0);
+            opacity: 0;
+            transition: background 0.2s ease, opacity 0.2s ease;
+            pointer-events: none;
+          }
+
+          .variant-preview:hover .variant-overlay {
+            background: rgba(102, 126, 234, 0.22);
+            opacity: 1;
+          }
+
+          .variant-zoom-icon {
+            width: 32px;
+            height: 32px;
+            color: #fff;
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.22));
           }
 
           .variant-name {
