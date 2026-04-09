@@ -455,7 +455,10 @@ class Image {
           <span id="lightbox-close" onclick="closeLightbox()">&times;</span>
           <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
           <div id="lightbox-caption"></div>
+          <div id="lightbox-counter"></div>
           <div class="lightbox-controls">
+            <button class="lightbox-btn close-btn" onclick="showPrevImage(event)">Prev</button>
+            <button class="lightbox-btn close-btn" onclick="showNextImage(event)">Next</button>
             <button class="lightbox-btn delete-btn" onclick="deleteImage()">🗑️ Delete</button>
             <button class="lightbox-btn close-btn" onclick="closeLightbox()">Close</button>
           </div>
@@ -464,6 +467,8 @@ class Image {
 
         <script>
           const startTime = new Date().getTime();
+          let currentGroupImages = [];
+          let currentGroupIndex = 0;
           
           function doneLoading(name) {
             let loadTime = new Date().getTime() - startTime;
@@ -475,7 +480,24 @@ class Image {
               return;
             }
 
-            openLightbox(card.dataset.imageUrl || '', card.dataset.imageName || '');
+            const fallbackUrl = card.dataset.imageUrl || '';
+            const fallbackName = card.dataset.imageName || '';
+            const groupImagesRaw = card.dataset.groupImages || '';
+            const clickedIndex = parseInt(card.dataset.groupIndex || '0', 10);
+
+            try {
+              const parsed = JSON.parse(groupImagesRaw || '[]');
+              currentGroupImages = Array.isArray(parsed) ? parsed.filter(item => item && item.url) : [];
+            } catch {
+              currentGroupImages = [];
+            }
+
+            if (currentGroupImages.length === 0 && fallbackUrl) {
+              currentGroupImages = [{ url: fallbackUrl, name: fallbackName }];
+            }
+
+            currentGroupIndex = Number.isFinite(clickedIndex) ? Math.max(0, Math.min(clickedIndex, currentGroupImages.length - 1)) : 0;
+            openLightbox();
           }
 
           function handleImageCardKeydown(event, card) {
@@ -485,22 +507,63 @@ class Image {
             }
           }
 
-          function openLightbox(url, name) {
-            if (!url) {
+          function openLightbox() {
+            if (!currentGroupImages.length) {
               return;
             }
+
+            renderCurrentImage();
             const lb = document.getElementById('lightbox');
-            document.getElementById('lightbox-img').src = url;
-            document.getElementById('lightbox-caption').textContent = name;
-            document.getElementById('lightbox-filename').textContent = name;
             lb.classList.add('open');
             document.body.style.overflow = 'hidden';
+          }
+
+          function renderCurrentImage() {
+            if (!currentGroupImages.length) {
+              return;
+            }
+
+            const current = currentGroupImages[currentGroupIndex];
+            document.getElementById('lightbox-img').src = current.url;
+            document.getElementById('lightbox-caption').textContent = current.name || '';
+            document.getElementById('lightbox-filename').textContent = current.name || '';
+            document.getElementById('lightbox-counter').textContent = (currentGroupIndex + 1) + ' / ' + currentGroupImages.length;
+          }
+
+          function showPrevImage(event) {
+            if (event) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+
+            if (currentGroupImages.length <= 1) {
+              return;
+            }
+
+            currentGroupIndex = (currentGroupIndex - 1 + currentGroupImages.length) % currentGroupImages.length;
+            renderCurrentImage();
+          }
+
+          function showNextImage(event) {
+            if (event) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+
+            if (currentGroupImages.length <= 1) {
+              return;
+            }
+
+            currentGroupIndex = (currentGroupIndex + 1) % currentGroupImages.length;
+            renderCurrentImage();
           }
 
           function closeLightbox() {
             document.getElementById('lightbox').classList.remove('open');
             document.getElementById('lightbox-img').src = '';
             document.body.style.overflow = '';
+            currentGroupImages = [];
+            currentGroupIndex = 0;
           }
 
           async function deleteImage() {
@@ -521,8 +584,28 @@ class Image {
           }
 
           document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') closeLightbox();
+            const lightboxOpen = document.getElementById('lightbox').classList.contains('open');
+            if (!lightboxOpen) {
+              return;
+            }
+
+            if (e.key === 'Escape') {
+              closeLightbox();
+            } else if (e.key === 'ArrowLeft') {
+              showPrevImage();
+            } else if (e.key === 'ArrowRight') {
+              showNextImage();
+            }
           });
+
+          document.getElementById('lightbox-img').addEventListener('wheel', e => {
+            e.preventDefault();
+            if (e.deltaY > 0) {
+              showNextImage();
+            } else if (e.deltaY < 0) {
+              showPrevImage();
+            }
+          }, { passive: false });
         </script>
       </body>
       </html>`;
@@ -552,11 +635,17 @@ class Image {
 
       const variantOneUrl = variantOne ? `/images/${folderId}/files/${encodeURIComponent(variantOne.name)}` : '';
       const variantTwoUrl = variantTwo ? `/images/${folderId}/files/${encodeURIComponent(variantTwo.name)}` : '';
+      const groupImageSet = [
+        { url: fileUrl, name: group.original.name },
+        ...(variantOne ? [{ url: variantOneUrl, name: variantOne.name }] : []),
+        ...(variantTwo ? [{ url: variantTwoUrl, name: variantTwo.name }] : []),
+      ];
+      const encodedGroupImageSet = escapeHtml(JSON.stringify(groupImageSet));
 
       groupsHtml += `
         <div class="image-group-card">
           <div class="group-preview-grid">
-            <div class="image-wrapper" data-image-url="${escapeHtml(fileUrl)}" data-image-name="${escapedFileName}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
+            <div class="image-wrapper" data-image-url="${escapeHtml(fileUrl)}" data-image-name="${escapedFileName}" data-group-images="${encodedGroupImageSet}" data-group-index="0" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
               <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(group.original.name)})" title="Original image">
               <div class="image-overlay">
                 <svg class="zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -566,10 +655,10 @@ class Image {
                 </svg>
               </div>
             </div>
-            <div class="image-wrapper small ${variantOne ? '' : 'empty'}" ${variantOne ? `data-image-url="${escapeHtml(variantOneUrl)}" data-image-name="${escapeHtml(variantOne.name)}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(variantOne.name)}"` : ''}>
+            <div class="image-wrapper small ${variantOne ? '' : 'empty'}" ${variantOne ? `data-image-url="${escapeHtml(variantOneUrl)}" data-image-name="${escapeHtml(variantOne.name)}" data-group-images="${encodedGroupImageSet}" data-group-index="1" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(variantOne.name)}"` : ''}>
               ${variantOne ? `<img src="${variantOneUrl}" alt="${escapeHtml(variantOne.name)}" onload="doneLoading(${JSON.stringify(variantOne.name)})" title="Variant 1">` : `<span class="slot-label">No variant</span>`}
             </div>
-            <div class="image-wrapper small ${variantTwo ? '' : 'empty'}" ${variantTwo ? `data-image-url="${escapeHtml(variantTwoUrl)}" data-image-name="${escapeHtml(variantTwo.name)}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(variantTwo.name)}"` : ''}>
+            <div class="image-wrapper small ${variantTwo ? '' : 'empty'}" ${variantTwo ? `data-image-url="${escapeHtml(variantTwoUrl)}" data-image-name="${escapeHtml(variantTwo.name)}" data-group-images="${encodedGroupImageSet}" data-group-index="2" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(variantTwo.name)}"` : ''}>
               ${variantTwo ? `<img src="${variantTwoUrl}" alt="${escapeHtml(variantTwo.name)}" onload="doneLoading(${JSON.stringify(variantTwo.name)})" title="Variant 2">` : `<span class="slot-label">No variant</span>`}
             </div>
           </div>
@@ -988,6 +1077,12 @@ class Image {
             word-break: break-word;
           }
 
+          #lightbox-counter {
+            color: #c7c7c7;
+            margin-top: 8px;
+            font-size: 12px;
+          }
+
           #lightbox-close {
             position: absolute;
             top: 20px;
@@ -1155,31 +1250,34 @@ class Image {
     const safeOriginalName = encodeURIComponent(group.original.name);
     const fileUrl = `/images/${folderId}/files/${safeOriginalName}`;
     const escapedFileName = escapeHtml(group.original.name);
-    const escapedFileUrl = escapeHtml(fileUrl);
 
     let imagesHtml = `
       <div class="group-main">
-        <div class="image-wrapper" style="position: relative; width: 100%; padding-bottom: 100%; margin-bottom: 20px;">
+        <div class="image-wrapper" style="position: relative; width: 100%; padding-bottom: 100%; margin-bottom: 20px; background:#f5f5f5; border-radius: 10px; overflow: hidden;">
           <img src="${fileUrl}" alt="${escapedFileName}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; padding: 8px;">
         </div>
         <h3>${escapedFileName}</h3>
-        <p style="color: #999; margin-top: 10px;">Total size: ${formatFileSize(group.totalSize)}</p>
+        <p style="color: #999; margin-top: 10px;">Original image • ${formatFileSize(group.original.sizeBytes)}</p>
+        <p style="color: #999; margin-top: 4px;">Total group size: ${formatFileSize(group.totalSize)}</p>
       </div>
     `;
 
     if (group.variants.length > 0) {
-      imagesHtml += `<div class="variants-section"><h4>Generated WebP Variants (${group.variants.length})</h4>`;
+      imagesHtml += `<div class="variants-section"><h4>Generated WebP Variants (${group.variants.length})</h4><div class="variants-grid">`;
       group.variants.forEach((variant: any) => {
         const safeVariantName = encodeURIComponent(variant.name);
         const variantUrl = `/images/${folderId}/files/${safeVariantName}`;
         imagesHtml += `
           <div class="variant-card">
-            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">${escapeHtml(variant.name)}</div>
-            <div style="font-size: 12px; color: #999;">${formatFileSize(variant.sizeBytes)}</div>
+            <div class="variant-preview">
+              <img src="${variantUrl}" alt="${escapeHtml(variant.name)}">
+            </div>
+            <div class="variant-name">${escapeHtml(variant.name)}</div>
+            <div class="variant-size">${formatFileSize(variant.sizeBytes)}</div>
           </div>
         `;
       });
-      imagesHtml += '</div>';
+      imagesHtml += '</div></div>';
     }
 
     return `
@@ -1269,6 +1367,44 @@ class Image {
             padding: 16px;
             margin-bottom: 12px;
             border-left: 4px solid #667eea;
+          }
+
+          .variants-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+          }
+
+          .variant-preview {
+            width: 100%;
+            padding-bottom: 100%;
+            position: relative;
+            background: #f2f3f8;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 10px;
+          }
+
+          .variant-preview img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 6px;
+          }
+
+          .variant-name {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+            word-break: break-word;
+          }
+
+          .variant-size {
+            font-size: 12px;
+            color: #999;
           }
 
           @media (max-width: 600px) {
