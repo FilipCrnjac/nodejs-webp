@@ -254,6 +254,27 @@ test('GET /images/:id/files/:name blocks cross-user access and serves owner file
   assert.equal(text, 'demo-content');
 });
 
+test('DELETE /images/:id/groups/:groupId removes original and both variants', async () => {
+  fs.mkdirSync(path.join(uploadsRoot, '13'), { recursive: true });
+  fs.writeFileSync(path.join(uploadsRoot, '13', 'sample.jpeg'), 'demo');
+  fs.writeFileSync(path.join(uploadsRoot, '13', '75-lossy_sample.webp'), 'demo');
+  fs.writeFileSync(path.join(uploadsRoot, '13', '75-lossless_sample.webp'), 'demo');
+
+  const { token } = await login('user13', 'password13');
+
+  const response = await fetch(createUrl('/images/13/groups/sample'), {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.success, true);
+  assert.deepEqual(fs.readdirSync(path.join(uploadsRoot, '13')), []);
+});
+
 test('POST /uploads rejects unsupported file types before saving', async () => {
   const { token } = await login('user1', 'password1');
   const formData = new FormData();

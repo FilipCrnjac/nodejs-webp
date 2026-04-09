@@ -125,6 +125,53 @@ router.delete('/:id/files/:name', async function(req: Request, res: Response) {
   }
 });
 
+/* DELETE whole image group (original + variants) */
+router.delete('/:id/groups/:groupId', async function(req: Request, res: Response) {
+  const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
+  if (!folderId) {
+    return null;
+  }
+
+  let groupId = '';
+  try {
+    groupId = decodeURIComponent(String(req.params.groupId || '')).trim();
+  } catch {
+    return res.status(400).json({ error: true, message: 'Invalid group id!' });
+  }
+
+  if (!groupId) {
+    return res.status(400).json({ error: true, message: 'Invalid group id!' });
+  }
+
+  const folderPath = path.join(process.env.UPLOADS_FOLDER!, String(folderId));
+
+  try {
+    const filesInFolder = await fs.readdir(folderPath);
+    const escapedGroupId = escapeRegExp(groupId);
+    const groupPattern = new RegExp(`^(?:${escapedGroupId}\\.[^/\\\\]+|\\d+-(?:lossy|lossless)_${escapedGroupId}\\.webp|${escapedGroupId}_\\d+-(?:lossy|lossless)\\.webp)$`);
+    const toDelete = filesInFolder
+      .filter(file => groupPattern.test(file))
+      .map(file => path.join(folderPath, file));
+
+    if (toDelete.length === 0) {
+      return res.status(404).json({ error: true, message: 'Image group not found!' });
+    }
+
+    await Promise.all(
+      toDelete.map(filePath =>
+        fs.unlink(filePath).catch(() => {
+          // File might already be gone, continue cleanup.
+        })
+      )
+    );
+
+    return res.json({ success: true, message: `Deleted ${toDelete.length} file(s).` });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: true, message: 'Failed to delete image group.' });
+  }
+});
+
 /* GET uploaded images of selected folder in HTML format (GROUPED) */
 router.get('/:id/grouped/html', function(req: Request, res: Response) {
   const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);

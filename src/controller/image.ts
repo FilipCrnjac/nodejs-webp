@@ -578,6 +578,7 @@ class Image {
             <div class="image-size">${formatFileSize(group.totalSize)}</div>
             <div class="image-variants">${group.variants.length} variant${group.variants.length !== 1 ? 's' : ''}</div>
             <a href="${shareLink}" class="share-link" title="Share this group">🔗 Share</a>
+            <button class="delete-group-btn" data-group-id="${escapeHtml(group.originalName)}" onclick="deleteGroupFromButton(this, event)">🗑️ Delete group</button>
           </div>
         </div>
       `;
@@ -867,6 +868,23 @@ class Image {
             transform: scale(1.05);
           }
 
+          .delete-group-btn {
+            margin-top: 8px;
+            padding: 8px 10px;
+            border: none;
+            border-radius: 4px;
+            background: #d32f2f;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+          }
+
+          .delete-group-btn:hover {
+            background: #b71c1c;
+          }
+
           @media (max-width: 768px) {
             .gallery {
               grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -1087,6 +1105,35 @@ class Image {
               location.reload();
             } else {
               alert('Failed to delete image');
+            }
+          }
+
+          async function deleteGroupFromButton(button, event) {
+            if (event) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+
+            const groupId = button?.dataset?.groupId || '';
+            if (!groupId) {
+              return;
+            }
+
+            const confirmed = confirm('Delete this whole group (original + WebP variants)?');
+            if (!confirmed) {
+              return;
+            }
+
+            const token = localStorage.getItem('access_token') || '';
+            const response = await fetch('/images/${folderId}/groups/' + encodeURIComponent(groupId), {
+              method: 'DELETE',
+              headers: token ? { Authorization: 'Bearer ' + token } : {}
+            });
+
+            if (response.ok) {
+              location.reload();
+            } else {
+              alert('Failed to delete image group');
             }
           }
 
