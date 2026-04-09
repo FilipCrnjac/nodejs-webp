@@ -7,6 +7,13 @@ type FileWithSize = {
   sizeBytes: number;
 };
 
+type ImageGroup = {
+  originalName: string;
+  original: FileWithSize | null;
+  variants: FileWithSize[];
+  totalSize: number;
+};
+
 class ImageService {
   getDirectories(): string[] {
     return FileHelperSync.getDirectories(process.env.UPLOADS_FOLDER!);
@@ -28,6 +35,49 @@ class ImageService {
         sizeBytes: stats.size,
       };
     });
+  }
+
+  getImageGroups(folderId: number): ImageGroup[] {
+    const files = this.getDirectoryFilesWithSize(folderId);
+    const groups = new Map<string, ImageGroup>();
+
+    files.forEach(file => {
+      const originalName = this.extractOriginalFileName(file.name);
+
+      if (!groups.has(originalName)) {
+        groups.set(originalName, {
+          originalName,
+          original: null,
+          variants: [],
+          totalSize: 0,
+        });
+      }
+
+      const group = groups.get(originalName)!;
+      group.totalSize += file.sizeBytes;
+
+      if (this.isOriginalImage(file.name, originalName)) {
+        group.original = file;
+      } else {
+        group.variants.push(file);
+      }
+    });
+
+    return Array.from(groups.values())
+      .filter(g => g.original !== null)
+      .sort((a, b) => b.totalSize - a.totalSize);
+  }
+
+  private extractOriginalFileName(fileName: string): string {
+    const parsed = path.parse(fileName);
+    const variantPattern = /^(\d+)-(lossy|lossless)_(.+)$/;
+    const match = parsed.name.match(variantPattern);
+    return match ? match[3] : parsed.name;
+  }
+
+  private isOriginalImage(fileName: string, originalName: string): boolean {
+    const parsed = path.parse(fileName);
+    return parsed.name === originalName || fileName === originalName;
   }
 }
 

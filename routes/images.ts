@@ -125,6 +125,46 @@ router.delete('/:id/files/:name', async function(req: Request, res: Response) {
   }
 });
 
+/* GET uploaded images of selected folder in HTML format (GROUPED) */
+router.get('/:id/grouped/html', function(req: Request, res: Response) {
+  const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
+  if (!folderId) {
+    return null;
+  }
+
+  try {
+    return res.type("html").send(image.getGroupedGalleryHtml(folderId));
+  } catch (e) {
+    console.log(e);
+    return res.status(500).json({ error: true, message: `Couldn't load folder ${folderId} images (grouped HTML).`});
+  }
+});
+
+/* GET single image group by original file name */
+router.get('/:id/groups/:groupId/html', function(req: Request, res: Response) {
+  const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
+  if (!folderId) {
+    return null;
+  }
+
+  try {
+    const groupId = decodeURIComponent(String(req.params.groupId));
+    const groups = image.getImageGroups(folderId);
+    const group = groups.find(g => g.originalName === groupId);
+
+    if (!group || !group.original) {
+      return res.status(404).json({ error: true, message: 'Image group not found!' });
+    }
+
+    // Generate HTML for this specific group
+    const html = image.getGroupDetailHtml(folderId, group);
+    return res.type("html").send(html);
+  } catch (e) {
+    console.log(e);
+    return res.status(500).json({ error: true, message: 'Failed to load image group.' });
+  }
+});
+
 export = router;
 
 function validateRequestedFolder(req: AuthenticatedRequest, res: Response): number | null {
@@ -150,4 +190,3 @@ function validateRequestedFolder(req: AuthenticatedRequest, res: Response): numb
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-
