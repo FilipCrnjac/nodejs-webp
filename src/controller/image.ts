@@ -1259,6 +1259,7 @@ class Image {
         <h3>${escapedFileName}</h3>
         <p style="color: #999; margin-top: 10px;">Original image • ${formatFileSize(group.original.sizeBytes)}</p>
         <p style="color: #999; margin-top: 4px;">Total group size: ${formatFileSize(group.totalSize)}</p>
+        <a class="download-btn" href="${fileUrl}" download="${escapedFileName}">Download original</a>
       </div>
     `;
 
@@ -1274,6 +1275,7 @@ class Image {
             </div>
             <div class="variant-name">${escapeHtml(variant.name)}</div>
             <div class="variant-size">${formatFileSize(variant.sizeBytes)}</div>
+            <a class="download-btn" href="${variantUrl}" download="${escapeHtml(variant.name)}">Download</a>
           </div>
         `;
       });
@@ -1371,14 +1373,14 @@ class Image {
 
           .variants-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 12px;
+            grid-template-columns: 1fr;
+            gap: 16px;
           }
 
           .variant-preview {
             width: 100%;
-            padding-bottom: 100%;
             position: relative;
+            min-height: 300px;
             background: #f2f3f8;
             border-radius: 8px;
             overflow: hidden;
@@ -1407,6 +1409,23 @@ class Image {
             color: #999;
           }
 
+          .download-btn {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+          }
+
+          .download-btn:hover {
+            transform: translateY(-2px);
+          }
+
           @media (max-width: 600px) {
             .container {
               padding: 20px;
@@ -1425,6 +1444,10 @@ class Image {
             .back-link {
               width: 100%;
               justify-content: center;
+            }
+
+            .variant-preview {
+              min-height: 220px;
             }
           }
         </style>
