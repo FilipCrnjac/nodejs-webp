@@ -544,20 +544,33 @@ class Image {
       const safeOriginalName = encodeURIComponent(group.original.name);
       const fileUrl = `/images/${folderId}/files/${safeOriginalName}`;
       const escapedFileName = escapeHtml(group.original.name);
-      const escapedFileUrl = escapeHtml(fileUrl);
       const groupId = encodeURIComponent(group.originalName);
       const shareLink = `/images/${folderId}/groups/${groupId}/html`;
 
+      const variantOne = group.variants[0];
+      const variantTwo = group.variants[1];
+
+      const variantOneUrl = variantOne ? `/images/${folderId}/files/${encodeURIComponent(variantOne.name)}` : '';
+      const variantTwoUrl = variantTwo ? `/images/${folderId}/files/${encodeURIComponent(variantTwo.name)}` : '';
+
       groupsHtml += `
         <div class="image-group-card">
-          <div class="image-wrapper" data-image-url="${escapedFileUrl}" data-image-name="${escapedFileName}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
-            <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(group.original.name)})" title="Click to enlarge">
-            <div class="image-overlay">
-              <svg class="zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-                <path d="M11 8v6M8 11h6"></path>
-              </svg>
+          <div class="group-preview-grid">
+            <div class="image-wrapper" data-image-url="${escapeHtml(fileUrl)}" data-image-name="${escapedFileName}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
+              <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(group.original.name)})" title="Original image">
+              <div class="image-overlay">
+                <svg class="zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                  <path d="M11 8v6M8 11h6"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="image-wrapper small ${variantOne ? '' : 'empty'}" ${variantOne ? `data-image-url="${escapeHtml(variantOneUrl)}" data-image-name="${escapeHtml(variantOne.name)}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(variantOne.name)}"` : ''}>
+              ${variantOne ? `<img src="${variantOneUrl}" alt="${escapeHtml(variantOne.name)}" onload="doneLoading(${JSON.stringify(variantOne.name)})" title="Variant 1">` : `<span class="slot-label">No variant</span>`}
+            </div>
+            <div class="image-wrapper small ${variantTwo ? '' : 'empty'}" ${variantTwo ? `data-image-url="${escapeHtml(variantTwoUrl)}" data-image-name="${escapeHtml(variantTwo.name)}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(variantTwo.name)}"` : ''}>
+              ${variantTwo ? `<img src="${variantTwoUrl}" alt="${escapeHtml(variantTwo.name)}" onload="doneLoading(${JSON.stringify(variantTwo.name)})" title="Variant 2">` : `<span class="slot-label">No variant</span>`}
             </div>
           </div>
           <div class="image-group-meta">
@@ -732,6 +745,43 @@ class Image {
             padding-bottom: 100%;
             overflow: hidden;
             background: #f5f5f5;
+          }
+
+          .group-preview-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 8px;
+            padding: 10px;
+          }
+
+          .group-preview-grid .image-wrapper:first-child {
+            grid-row: 1 / span 2;
+          }
+
+          .image-wrapper.small {
+            padding-bottom: 0;
+            min-height: 112px;
+          }
+
+          .image-wrapper.small img {
+            position: relative;
+            width: 100%;
+            height: 100%;
+          }
+
+          .image-wrapper.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f1f5;
+            border: 1px dashed #cfd2da;
+          }
+
+          .slot-label {
+            font-size: 11px;
+            color: #8a8f99;
+            font-weight: 600;
           }
 
           .image-wrapper img {

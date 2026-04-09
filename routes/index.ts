@@ -630,7 +630,7 @@ router.get('/', function(req: Request, res: Response) {
           const note = document.getElementById('gallery-login-note');
           
           if (userId) {
-            link.href = '/images/' + userId + '/html';
+            link.href = '/images/' + userId + '/grouped/html';
             link.textContent = '👤 Open My Gallery (User ' + userId + ') →';
             container.style.display = '';
             if (note) {
