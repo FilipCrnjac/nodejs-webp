@@ -75,6 +75,15 @@ test('GET / returns the home page', async () => {
   assert.match(html, /\/uploads/);
 });
 
+test('GET / includes home upload drag-drop and preview controls', async () => {
+  const response = await fetch(createUrl('/'));
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /id="home-upload-dropzone"/);
+  assert.match(html, /id="home-upload-preview-section"/);
+});
+
 test('GET /login returns login screen', async () => {
   const response = await fetch(createUrl('/login'));
   const html = await response.text();

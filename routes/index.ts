@@ -271,6 +271,54 @@ router.get('/', function(req: Request, res: Response) {
           accent-color: #667eea;
         }
 
+        .upload-dropzone {
+          border: 2px dashed #667eea;
+          border-radius: 10px;
+          background: #f6f7ff;
+          padding: 18px;
+          text-align: center;
+          cursor: pointer;
+          transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .upload-dropzone.active {
+          border-color: #4f46e5;
+          background: #eef0ff;
+        }
+
+        .upload-dropzone-title {
+          color: #374151;
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+
+        .upload-dropzone-help {
+          color: #6b7280;
+          font-size: 12px;
+        }
+
+        .upload-preview {
+          margin-top: 14px;
+          border-radius: 10px;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          padding: 10px;
+          text-align: center;
+          display: none;
+        }
+
+        .upload-preview.show {
+          display: block;
+        }
+
+        .upload-preview img {
+          max-width: 100%;
+          max-height: 260px;
+          object-fit: contain;
+          border-radius: 8px;
+        }
+
         @media (max-width: 600px) {
           .header {
             padding: 30px 15px;
@@ -385,8 +433,14 @@ router.get('/', function(req: Request, res: Response) {
             <form id="home-upload-form" action="/uploads" method="POST" enctype="multipart/form-data">
               <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 10px; color: #333; font-weight: 500;">Select Image</label>
-                <input id="home-upload-file" type="file" name="myImage" accept="image/*" required
-                       style="display: block; width: 100%; padding: 12px; border: 2px dashed #667eea; border-radius: 6px; cursor: pointer;" />
+                <input id="home-upload-file" type="file" name="myImage" accept="image/*" required style="display: none;" />
+                <div id="home-upload-dropzone" class="upload-dropzone" tabindex="0" role="button" aria-label="Select image file">
+                  <div class="upload-dropzone-title">Click or drag and drop image here</div>
+                  <div class="upload-dropzone-help">PNG, JPG, GIF, WEBP</div>
+                </div>
+                <div id="home-upload-preview-section" class="upload-preview">
+                  <img id="home-upload-preview" alt="Selected image preview">
+                </div>
               </div>
 
               <div class="quality-grid">
@@ -526,6 +580,7 @@ router.get('/', function(req: Request, res: Response) {
           const hasToken = Boolean(localStorage.getItem('access_token'));
           const note = document.getElementById('upload-login-note');
           const fileInput = document.getElementById('home-upload-file');
+          const dropzone = document.getElementById('home-upload-dropzone');
           const submitButton = document.getElementById('home-upload-submit');
           const lossyQualityInput = document.getElementById('home-lossy-quality');
           const losslessQualityInput = document.getElementById('home-lossless-quality');
@@ -537,8 +592,12 @@ router.get('/', function(req: Request, res: Response) {
 
           if (fileInput) {
             fileInput.disabled = !hasToken;
-            fileInput.style.opacity = hasToken ? '1' : '0.6';
-            fileInput.style.cursor = hasToken ? 'pointer' : 'not-allowed';
+          }
+
+          if (dropzone) {
+            dropzone.style.opacity = hasToken ? '1' : '0.6';
+            dropzone.style.cursor = hasToken ? 'pointer' : 'not-allowed';
+            dropzone.setAttribute('aria-disabled', hasToken ? 'false' : 'true');
           }
 
           if (submitButton) {
@@ -574,6 +633,84 @@ router.get('/', function(req: Request, res: Response) {
 
           input.addEventListener('input', update);
           update();
+        }
+
+        function setupHomeUploadDropzone() {
+          const fileInput = document.getElementById('home-upload-file');
+          const dropzone = document.getElementById('home-upload-dropzone');
+          const previewSection = document.getElementById('home-upload-preview-section');
+          const previewImage = document.getElementById('home-upload-preview');
+          if (!fileInput || !dropzone || !previewSection || !previewImage) {
+            return;
+          }
+
+          function showPreview(file) {
+            if (!file || !file.type || !file.type.startsWith('image/')) {
+              previewSection.classList.remove('show');
+              previewImage.removeAttribute('src');
+              return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = event => {
+              previewImage.src = event.target?.result || '';
+              previewSection.classList.add('show');
+            };
+            reader.readAsDataURL(file);
+          }
+
+          dropzone.addEventListener('click', () => {
+            if (fileInput.disabled) {
+              return;
+            }
+            fileInput.click();
+          });
+          dropzone.addEventListener('keydown', event => {
+            if (fileInput.disabled) {
+              return;
+            }
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              fileInput.click();
+            }
+          });
+
+          ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, event => {
+              event.preventDefault();
+              dropzone.classList.add('active');
+            });
+          });
+
+          ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, event => {
+              event.preventDefault();
+              dropzone.classList.remove('active');
+            });
+          });
+
+          dropzone.addEventListener('drop', event => {
+            if (fileInput.disabled) {
+              return;
+            }
+            const file = event.dataTransfer?.files?.[0];
+            if (!file) {
+              return;
+            }
+
+            fileInput.files = event.dataTransfer.files;
+            showPreview(file);
+            dropzone.querySelector('.upload-dropzone-title').textContent = file.name;
+          });
+
+          fileInput.addEventListener('change', () => {
+            const file = fileInput.files?.[0];
+            showPreview(file);
+            const title = dropzone.querySelector('.upload-dropzone-title');
+            if (title) {
+              title.textContent = file ? file.name : 'Click or drag and drop image here';
+            }
+          });
         }
 
         async function register() {
@@ -730,6 +867,7 @@ router.get('/', function(req: Request, res: Response) {
 
         syncHomeQualityLabel('home-lossy-quality', 'home-lossy-quality-value');
         syncHomeQualityLabel('home-lossless-quality', 'home-lossless-quality-value');
+        setupHomeUploadDropzone();
 
         const initialTab = new URLSearchParams(window.location.search).get('tab') || 'home';
         setActiveTab(initialTab);
