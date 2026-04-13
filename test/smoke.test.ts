@@ -263,6 +263,33 @@ test('GET /images/:id/files/:name blocks cross-user access and serves owner file
   assert.equal(text, 'demo-content');
 });
 
+test('GET /images/:id/groups/:groupId/html shows audit metadata and download count', async () => {
+  fs.mkdirSync(path.join(uploadsRoot, '13'), { recursive: true });
+  fs.writeFileSync(path.join(uploadsRoot, '13', 'sample.jpeg'), 'demo-content');
+  fs.writeFileSync(path.join(uploadsRoot, '13', '75-lossy_sample.webp'), 'demo-lossy');
+  fs.writeFileSync(path.join(uploadsRoot, '13', '75-lossless_sample.webp'), 'demo-lossless');
+
+  const { token } = await login('user13', 'password13');
+
+  const fileResponse = await fetch(createUrl('/images/13/files/sample.jpeg'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  assert.equal(fileResponse.status, 200);
+
+  const detailResponse = await fetch(createUrl('/images/13/groups/sample/html'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const html = await detailResponse.text();
+
+  assert.equal(detailResponse.status, 200);
+  assert.match(html, /Downloads:<\/strong> 1/);
+  assert.match(html, /Last viewed:/);
+});
+
 test('DELETE /images/:id/groups/:groupId removes original and both variants', async () => {
   fs.mkdirSync(path.join(uploadsRoot, '13'), { recursive: true });
   fs.writeFileSync(path.join(uploadsRoot, '13', 'sample.jpeg'), 'demo');

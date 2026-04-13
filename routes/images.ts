@@ -6,11 +6,13 @@ import { spawn } from 'child_process';
 import express, { Request, Response } from 'express';
 
 import Image = require('../src/controller/image');
+import ImageAuditService = require('../src/services/imageAuditService');
 
 type AuthenticatedRequest = Request & { userId: number };
 
 const router = express.Router();
 const image = new Image();
+const imageAuditService = new ImageAuditService();
 
 /* GET uploaded images folders list in HTML */
 router.get('/', function(req: Request, res: Response) {
@@ -72,6 +74,7 @@ router.get('/:id/files/:name', async function(req: Request, res: Response) {
 
   try {
     await fs.access(fullPath);
+    imageAuditService.incrementDownloads(folderId, decodedName);
     return res.sendFile(fullPath);
   } catch {
     return res.status(404).json({ error: true, message: 'Non existing file!' });
@@ -264,8 +267,11 @@ router.get('/:id/groups/:groupId/html', function(req: Request, res: Response) {
       return res.status(404).json({ error: true, message: 'Image group not found!' });
     }
 
+    imageAuditService.recordView(folderId, group.originalName);
+    const groupAudit = imageAuditService.getGroupAudit(folderId, group.originalName);
+
     // Generate HTML for this specific group
-    const html = image.getGroupDetailHtml(folderId, group);
+    const html = image.getGroupDetailHtml(folderId, group, groupAudit);
     return res.type("html").send(html);
   } catch (e) {
     console.log(e);

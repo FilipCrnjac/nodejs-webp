@@ -7,6 +7,7 @@ import multer from 'multer';
 import Webp = require('./../utils/webp');
 import FileHelperSync = require('./../utils/fileHelperSync');
 import createHttpError = require('./../utils/httpError');
+import ImageAuditService = require('./imageAuditService');
 
 type HttpError = Error & { status: number };
 type AuthenticatedUploadRequest = Request & { userId: number; body?: { lossyQuality?: string; losslessQuality?: string } };
@@ -14,6 +15,7 @@ type AuthenticatedUploadRequest = Request & { userId: number; body?: { lossyQual
 const supportedImageFormats = new Set(['image/png', 'image/jpeg']);
 const defaultQuality = 75;
 const maxUploadSizeBytes = 10 * 1024 * 1024;
+const imageAuditService = new ImageAuditService();
 
 class UploadService {
   async uploadPhoto(req: AuthenticatedUploadRequest, res: Response): Promise<string> {
@@ -74,6 +76,7 @@ class UploadService {
           const startTimeConversion = process.hrtime();
           await runConvertConcurrently(req, lossyQuality, losslessQuality);
           logExecutionTime(startTimeConversion, 'Concurrent conversion');
+          imageAuditService.recordUpload(userId, req.file.filename, lossyQuality, losslessQuality);
 
           const html = `
             <!DOCTYPE html>

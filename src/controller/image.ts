@@ -1472,11 +1472,18 @@ class Image {
     return service.getImageGroups(folderId);
   }
 
-  getGroupDetailHtml(folderId: number, group: any): string {
+  getGroupDetailHtml(folderId: number, group: any, groupAudit?: { uploadedAt?: string; lastViewed?: string | null; downloads?: number; lossyQuality?: number; losslessQuality?: number } | null): string {
     const safeOriginalName = encodeURIComponent(group.original.name);
     const fileUrl = `/images/${folderId}/files/${safeOriginalName}`;
     const escapedFileName = escapeHtml(group.original.name);
     const groupZipUrl = `/images/${folderId}/groups/${encodeURIComponent(group.originalName)}/download`;
+
+    const uploadedAtText = groupAudit?.uploadedAt ? new Date(groupAudit.uploadedAt).toLocaleString() : 'Unknown';
+    const lastViewedText = groupAudit?.lastViewed ? new Date(groupAudit.lastViewed).toLocaleString() : 'Not viewed yet';
+    const downloadsText = String(groupAudit?.downloads || 0);
+    const qualityText = groupAudit?.lossyQuality && groupAudit?.losslessQuality
+      ? `Lossy ${groupAudit.lossyQuality} / Lossless ${groupAudit.losslessQuality}`
+      : 'Unknown';
 
     let imagesHtml = `
       <div class="group-main">
@@ -1486,6 +1493,10 @@ class Image {
         <h3>${escapedFileName}</h3>
         <p style="color: #999; margin-top: 10px;">Original image • ${formatFileSize(group.original.sizeBytes)}</p>
         <p style="color: #999; margin-top: 4px;">Total group size: ${formatFileSize(group.totalSize)}</p>
+        <div class="audit-row"><strong>Uploaded:</strong> ${escapeHtml(uploadedAtText)}</div>
+        <div class="audit-row"><strong>Last viewed:</strong> ${escapeHtml(lastViewedText)}</div>
+        <div class="audit-row"><strong>Downloads:</strong> ${escapeHtml(downloadsText)}</div>
+        <div class="audit-row"><strong>Quality:</strong> ${escapeHtml(qualityText)}</div>
         <a class="download-btn" href="${fileUrl}" download="${escapedFileName}">Download original</a>
         <a class="download-btn secondary" href="${groupZipUrl}">Download full group ZIP</a>
       </div>
@@ -1586,6 +1597,12 @@ class Image {
             font-size: 24px;
             color: #333;
             margin-top: 20px;
+          }
+
+          .audit-row {
+            margin-top: 8px;
+            color: #4b5563;
+            font-size: 13px;
           }
 
           .variants-section {
