@@ -643,7 +643,7 @@ class Image {
       const encodedGroupImageSet = escapeHtml(JSON.stringify(groupImageSet));
 
       groupsHtml += `
-        <div class="image-group-card">
+        <div class="image-group-card" data-page-item="true">
           <div class="group-preview-grid">
             <div class="image-wrapper" data-image-url="${escapeHtml(fileUrl)}" data-image-name="${escapedFileName}" data-group-images="${encodedGroupImageSet}" data-group-index="0" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
               <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(group.original.name)})" title="Original image">
@@ -766,6 +766,54 @@ class Image {
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          }
+
+          .pagination {
+            margin-top: 16px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+
+          .pagination.hidden {
+            display: none;
+          }
+
+          .pagination-meta {
+            color: #666;
+            font-size: 13px;
+          }
+
+          .pagination-actions {
+            display: flex;
+            gap: 8px;
+          }
+
+          .pagination-btn {
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #eef0f9;
+            color: #374151;
+          }
+
+          .pagination-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+          }
+
+          .pagination-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
           }
 
           .gallery.empty {
@@ -1024,6 +1072,13 @@ class Image {
           <div id="gallery-container" class="gallery${groups.length === 0 ? ' empty' : ''}">
             ${emptyState}
           </div>
+          <div id="gallery-pagination" class="pagination hidden">
+            <div id="gallery-pagination-meta" class="pagination-meta"></div>
+            <div class="pagination-actions">
+              <button id="gallery-prev-btn" class="pagination-btn" type="button">Previous</button>
+              <button id="gallery-next-btn" class="pagination-btn" type="button">Next</button>
+            </div>
+          </div>
         </div>
 
         <div id="lightbox" onclick="closeLightbox()">
@@ -1153,10 +1208,59 @@ class Image {
 
         <script>
           const startTime = new Date().getTime();
+          const PAGE_SIZE = 9;
+          let currentPage = 1;
+          let totalPages = 1;
           
           function doneLoading(name) {
             let loadTime = new Date().getTime() - startTime;
             console.log("Image [" + name + "] took " + loadTime + "ms to load");
+          }
+
+          function getGalleryItems() {
+            return Array.from(document.querySelectorAll('[data-page-item="true"]'));
+          }
+
+          function renderPagination() {
+            const items = getGalleryItems();
+            const paginationContainer = document.getElementById('gallery-pagination');
+            const meta = document.getElementById('gallery-pagination-meta');
+            const prevBtn = document.getElementById('gallery-prev-btn');
+            const nextBtn = document.getElementById('gallery-next-btn');
+
+            if (!paginationContainer || !meta || !prevBtn || !nextBtn) {
+              return;
+            }
+
+            if (!items.length || items.length <= PAGE_SIZE) {
+              paginationContainer.classList.add('hidden');
+              items.forEach(item => {
+                item.style.display = '';
+              });
+              return;
+            }
+
+            totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+            if (currentPage > totalPages) {
+              currentPage = totalPages;
+            }
+
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const end = start + PAGE_SIZE;
+            items.forEach((item, index) => {
+              item.style.display = index >= start && index < end ? '' : 'none';
+            });
+
+            meta.textContent = 'Page ' + currentPage + ' of ' + totalPages + ' (' + items.length + ' groups)';
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+            paginationContainer.classList.remove('hidden');
+          }
+
+          function changePage(nextPage) {
+            currentPage = Math.max(1, Math.min(nextPage, totalPages));
+            renderPagination();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }
 
           function openLightboxFromCard(card) {
@@ -1241,6 +1345,17 @@ class Image {
           document.addEventListener('keydown', e => {
             if (e.key === 'Escape') closeLightbox();
           });
+
+          const prevBtn = document.getElementById('gallery-prev-btn');
+          const nextBtn = document.getElementById('gallery-next-btn');
+          if (prevBtn) {
+            prevBtn.addEventListener('click', () => changePage(currentPage - 1));
+          }
+          if (nextBtn) {
+            nextBtn.addEventListener('click', () => changePage(currentPage + 1));
+          }
+
+          renderPagination();
         </script>
       </body>
       </html>`;

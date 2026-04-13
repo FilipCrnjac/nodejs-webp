@@ -275,6 +275,31 @@ test('DELETE /images/:id/groups/:groupId removes original and both variants', as
   assert.deepEqual(fs.readdirSync(path.join(uploadsRoot, '13')), []);
 });
 
+test('GET /images/:id/grouped/html includes pagination controls when many groups exist', async () => {
+  const folderPath = path.join(uploadsRoot, '13');
+  fs.mkdirSync(folderPath, { recursive: true });
+
+  for (let i = 0; i < 12; i += 1) {
+    fs.writeFileSync(path.join(folderPath, `sample-${i}.jpeg`), `demo-${i}`);
+    fs.writeFileSync(path.join(folderPath, `75-lossy_sample-${i}.webp`), `demo-lossy-${i}`);
+    fs.writeFileSync(path.join(folderPath, `75-lossless_sample-${i}.webp`), `demo-lossless-${i}`);
+  }
+
+  const { token } = await login('user13', 'password13');
+  const response = await fetch(createUrl('/images/13/grouped/html'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /id="gallery-pagination"/);
+  assert.match(html, /id="gallery-prev-btn"/);
+  assert.match(html, /id="gallery-next-btn"/);
+  assert.match(html, /Page '\s*\+ currentPage \+ '\s*of/);
+});
+
 test('POST /uploads rejects unsupported file types before saving', async () => {
   const { token } = await login('user1', 'password1');
   const formData = new FormData();
