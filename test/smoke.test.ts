@@ -300,6 +300,26 @@ test('GET /images/:id/grouped/html includes pagination controls when many groups
   assert.match(html, /Page '\s*\+ currentPage \+ '\s*of/);
 });
 
+test('GET /images/:id/grouped/html includes group search controls', async () => {
+  const folderPath = path.join(uploadsRoot, '13');
+  fs.mkdirSync(folderPath, { recursive: true });
+  fs.writeFileSync(path.join(folderPath, 'cover.jpeg'), 'demo-cover');
+  fs.writeFileSync(path.join(folderPath, '75-lossy_cover.webp'), 'demo-lossy-cover');
+  fs.writeFileSync(path.join(folderPath, '75-lossless_cover.webp'), 'demo-lossless-cover');
+
+  const { token } = await login('user13', 'password13');
+  const response = await fetch(createUrl('/images/13/grouped/html'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /id="gallery-search-input"/);
+  assert.match(html, /id="gallery-search-clear"/);
+});
+
 test('POST /uploads rejects unsupported file types before saving', async () => {
   const { token } = await login('user1', 'password1');
   const formData = new FormData();

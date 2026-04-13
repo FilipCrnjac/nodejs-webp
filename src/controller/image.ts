@@ -643,7 +643,7 @@ class Image {
       const encodedGroupImageSet = escapeHtml(JSON.stringify(groupImageSet));
 
       groupsHtml += `
-        <div class="image-group-card" data-page-item="true">
+        <div class="image-group-card" data-page-item="true" data-group-name="${escapeHtml(group.originalName)}">
           <div class="group-preview-grid">
             <div class="image-wrapper" data-image-url="${escapeHtml(fileUrl)}" data-image-name="${escapedFileName}" data-group-images="${encodedGroupImageSet}" data-group-index="0" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
               <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(group.original.name)})" title="Original image">
@@ -766,6 +766,44 @@ class Image {
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          }
+
+          .gallery-toolbar {
+            margin-bottom: 14px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+          }
+
+          .gallery-search {
+            flex: 1;
+            min-width: 220px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+          }
+
+          .gallery-search:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+          }
+
+          .clear-search-btn {
+            border: none;
+            border-radius: 8px;
+            background: #eef0f9;
+            color: #374151;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 12px;
+            cursor: pointer;
           }
 
           .pagination {
@@ -1069,6 +1107,11 @@ class Image {
             <a href="/" class="back-link">← Back to App</a>
           </div>
 
+          <div class="gallery-toolbar">
+            <input id="gallery-search-input" class="gallery-search" type="search" placeholder="Search by image name..." aria-label="Search groups by image name">
+            <button id="gallery-search-clear" class="clear-search-btn" type="button">Clear</button>
+          </div>
+
           <div id="gallery-container" class="gallery${groups.length === 0 ? ' empty' : ''}">
             ${emptyState}
           </div>
@@ -1211,6 +1254,7 @@ class Image {
           const PAGE_SIZE = 9;
           let currentPage = 1;
           let totalPages = 1;
+          let currentFilterQuery = '';
           
           function doneLoading(name) {
             let loadTime = new Date().getTime() - startTime;
@@ -1222,7 +1266,15 @@ class Image {
           }
 
           function renderPagination() {
-            const items = getGalleryItems();
+            const allItems = getGalleryItems();
+            const items = allItems.filter(item => {
+              const groupName = (item.dataset.groupName || '').toLowerCase();
+              const matches = !currentFilterQuery || groupName.includes(currentFilterQuery);
+              if (!matches) {
+                item.style.display = 'none';
+              }
+              return matches;
+            });
             const paginationContainer = document.getElementById('gallery-pagination');
             const meta = document.getElementById('gallery-pagination-meta');
             const prevBtn = document.getElementById('gallery-prev-btn');
@@ -1232,7 +1284,20 @@ class Image {
               return;
             }
 
-            if (!items.length || items.length <= PAGE_SIZE) {
+            if (!items.length) {
+              paginationContainer.classList.add('hidden');
+              if (meta) {
+                meta.textContent = 'No groups match your search.';
+              }
+              allItems.forEach(item => {
+                if (item.style.display !== 'none') {
+                  item.style.display = '';
+                }
+              });
+              return;
+            }
+
+            if (items.length <= PAGE_SIZE) {
               paginationContainer.classList.add('hidden');
               items.forEach(item => {
                 item.style.display = '';
@@ -1251,7 +1316,7 @@ class Image {
               item.style.display = index >= start && index < end ? '' : 'none';
             });
 
-            meta.textContent = 'Page ' + currentPage + ' of ' + totalPages + ' (' + items.length + ' groups)';
+            meta.textContent = 'Page ' + currentPage + ' of ' + totalPages + ' (' + items.length + ' matching groups)';
             prevBtn.disabled = currentPage <= 1;
             nextBtn.disabled = currentPage >= totalPages;
             paginationContainer.classList.remove('hidden');
@@ -1261,6 +1326,12 @@ class Image {
             currentPage = Math.max(1, Math.min(nextPage, totalPages));
             renderPagination();
             window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+
+          function applyGroupSearch(query) {
+            currentFilterQuery = String(query || '').trim().toLowerCase();
+            currentPage = 1;
+            renderPagination();
           }
 
           function openLightboxFromCard(card) {
@@ -1353,6 +1424,22 @@ class Image {
           }
           if (nextBtn) {
             nextBtn.addEventListener('click', () => changePage(currentPage + 1));
+          }
+
+          const searchInput = document.getElementById('gallery-search-input');
+          const clearSearchButton = document.getElementById('gallery-search-clear');
+          if (searchInput) {
+            searchInput.addEventListener('input', event => {
+              applyGroupSearch(event.target.value || '');
+            });
+          }
+          if (clearSearchButton) {
+            clearSearchButton.addEventListener('click', () => {
+              if (searchInput) {
+                searchInput.value = '';
+              }
+              applyGroupSearch('');
+            });
           }
 
           renderPagination();
