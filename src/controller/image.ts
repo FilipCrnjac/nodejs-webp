@@ -631,18 +631,18 @@ class Image {
       const shareLink = `/images/${folderId}/groups/${groupId}/html`;
       const downloadGroupLink = `/images/${folderId}/groups/${groupId}/download`;
 
-      const variantOne = group.variants[0];
-      const variantTwo = group.variants[1];
+      const lossyVariant = group.variants.find((variant: any) => isLossyVariantName(variant.name));
+      const losslessVariant = group.variants.find((variant: any) => isLosslessVariantName(variant.name));
       const originalSize = formatFileSize(group.original.sizeBytes);
-      const variantOneSize = variantOne ? formatFileSize(variantOne.sizeBytes) : '—';
-      const variantTwoSize = variantTwo ? formatFileSize(variantTwo.sizeBytes) : '—';
+      const lossySize = lossyVariant ? formatFileSize(lossyVariant.sizeBytes) : '—';
+      const losslessSize = losslessVariant ? formatFileSize(losslessVariant.sizeBytes) : '—';
 
-      const variantOneUrl = variantOne ? `/images/${folderId}/files/${encodeURIComponent(variantOne.name)}` : '';
-      const variantTwoUrl = variantTwo ? `/images/${folderId}/files/${encodeURIComponent(variantTwo.name)}` : '';
+      const lossyVariantUrl = lossyVariant ? `/images/${folderId}/files/${encodeURIComponent(lossyVariant.name)}` : '';
+      const losslessVariantUrl = losslessVariant ? `/images/${folderId}/files/${encodeURIComponent(losslessVariant.name)}` : '';
       const groupImageSet = [
         { url: fileUrl, name: group.original.name },
-        ...(variantOne ? [{ url: variantOneUrl, name: variantOne.name }] : []),
-        ...(variantTwo ? [{ url: variantTwoUrl, name: variantTwo.name }] : []),
+        ...(lossyVariant ? [{ url: lossyVariantUrl, name: lossyVariant.name }] : []),
+        ...(losslessVariant ? [{ url: losslessVariantUrl, name: losslessVariant.name }] : []),
       ];
       const encodedGroupImageSet = escapeHtml(JSON.stringify(groupImageSet));
 
@@ -659,11 +659,11 @@ class Image {
                 </svg>
               </div>
             </div>
-            <div class="image-wrapper small ${variantOne ? '' : 'empty'}" ${variantOne ? `data-image-url="${escapeHtml(variantOneUrl)}" data-image-name="${escapeHtml(variantOne.name)}" data-group-images="${encodedGroupImageSet}" data-group-index="1" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(variantOne.name)}"` : ''}>
-              ${variantOne ? `<img src="${variantOneUrl}" alt="${escapeHtml(variantOne.name)}" onload="doneLoading(${JSON.stringify(variantOne.name)})" title="Variant 1">` : `<span class="slot-label">No variant</span>`}
+            <div class="image-wrapper small ${lossyVariant ? '' : 'empty'}" ${lossyVariant ? `data-image-url="${escapeHtml(lossyVariantUrl)}" data-image-name="${escapeHtml(lossyVariant.name)}" data-group-images="${encodedGroupImageSet}" data-group-index="1" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(lossyVariant.name)}"` : ''}>
+              ${lossyVariant ? `<img src="${lossyVariantUrl}" alt="${escapeHtml(lossyVariant.name)}" onload="doneLoading(${JSON.stringify(lossyVariant.name)})" title="Lossy variant">` : `<span class="slot-label">No lossy</span>`}
             </div>
-            <div class="image-wrapper small ${variantTwo ? '' : 'empty'}" ${variantTwo ? `data-image-url="${escapeHtml(variantTwoUrl)}" data-image-name="${escapeHtml(variantTwo.name)}" data-group-images="${encodedGroupImageSet}" data-group-index="2" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(variantTwo.name)}"` : ''}>
-              ${variantTwo ? `<img src="${variantTwoUrl}" alt="${escapeHtml(variantTwo.name)}" onload="doneLoading(${JSON.stringify(variantTwo.name)})" title="Variant 2">` : `<span class="slot-label">No variant</span>`}
+            <div class="image-wrapper small ${losslessVariant ? '' : 'empty'}" ${losslessVariant ? `data-image-url="${escapeHtml(losslessVariantUrl)}" data-image-name="${escapeHtml(losslessVariant.name)}" data-group-images="${encodedGroupImageSet}" data-group-index="2" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(losslessVariant.name)}"` : ''}>
+              ${losslessVariant ? `<img src="${losslessVariantUrl}" alt="${escapeHtml(losslessVariant.name)}" onload="doneLoading(${JSON.stringify(losslessVariant.name)})" title="Lossless variant">` : `<span class="slot-label">No lossless</span>`}
             </div>
           </div>
           <div class="image-group-meta">
@@ -671,8 +671,8 @@ class Image {
             <div class="image-size group-total-size">Total group size: ${formatFileSize(group.totalSize)}</div>
             <div class="group-size-breakdown">
               <div class="group-size-item"><span>Original</span><strong>${originalSize}</strong></div>
-              <div class="group-size-item"><span>Variant 1</span><strong>${variantOneSize}</strong></div>
-              <div class="group-size-item"><span>Variant 2</span><strong>${variantTwoSize}</strong></div>
+              <div class="group-size-item"><span>Lossy</span><strong>${lossySize}</strong></div>
+              <div class="group-size-item"><span>Lossless</span><strong>${losslessSize}</strong></div>
             </div>
             <div class="image-variants">${group.variants.length} variant${group.variants.length !== 1 ? 's' : ''}</div>
             <div class="group-actions">
@@ -1557,34 +1557,39 @@ class Image {
       ? `Lossy ${groupAudit.lossyQuality} / Lossless ${groupAudit.losslessQuality}`
       : 'Unknown';
 
-    const variantCards = group.variants.slice(0, 2).map((variant: any, index: number) => {
-      const safeVariantName = encodeURIComponent(variant.name);
+    const lossyVariant = group.variants.find((variant: any) => isLossyVariantName(variant.name));
+    const losslessVariant = group.variants.find((variant: any) => isLosslessVariantName(variant.name));
+    const variantCards = [
+      { label: 'Lossy', variant: lossyVariant, emptyText: 'No lossy variant' },
+      { label: 'Lossless', variant: losslessVariant, emptyText: 'No lossless variant' },
+    ].map(item => {
+      if (!item.variant) {
+        return `
+        <div class="image-set-card empty">
+          <div class="image-set-label">${item.label}</div>
+          <div class="image-set-preview empty"><span>${item.emptyText}</span></div>
+          <div class="image-set-name">Not available</div>
+          <div class="image-set-size">-</div>
+        </div>
+      `;
+      }
+
+      const safeVariantName = encodeURIComponent(item.variant.name);
       const variantUrl = `/images/${folderId}/files/${safeVariantName}`;
-      const escapedVariantName = escapeHtml(variant.name);
+      const escapedVariantName = escapeHtml(item.variant.name);
       return `
         <div class="image-set-card">
-          <div class="image-set-label">Variant ${index + 1}</div>
+          <div class="image-set-label">${item.label}</div>
           <div class="image-set-preview" data-preview-url="${escapeHtml(variantUrl)}" data-preview-name="${escapedVariantName}" onclick="openDetailLightbox(this)" onkeydown="handleDetailPreviewKeydown(event, this)" tabindex="0" role="button" aria-label="Preview ${escapedVariantName}">
             <img src="${variantUrl}" alt="${escapedVariantName}">
             <div class="image-set-overlay">Click to preview</div>
           </div>
           <div class="image-set-name">${escapedVariantName}</div>
-          <div class="image-set-size">${formatFileSize(variant.sizeBytes)}</div>
+          <div class="image-set-size">${formatFileSize(item.variant.sizeBytes)}</div>
           <a class="download-btn" href="${variantUrl}" download="${escapedVariantName}">Download</a>
         </div>
       `;
     });
-
-    while (variantCards.length < 2) {
-      variantCards.push(`
-        <div class="image-set-card empty">
-          <div class="image-set-label">Variant ${variantCards.length + 1}</div>
-          <div class="image-set-preview empty"><span>No variant</span></div>
-          <div class="image-set-name">Not available</div>
-          <div class="image-set-size">-</div>
-        </div>
-      `);
-    }
 
     const imagesHtml = `
       <div class="group-main">
@@ -1969,6 +1974,14 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function isLossyVariantName(fileName: string): boolean {
+  return /lossy/i.test(fileName) && !/lossless/i.test(fileName);
+}
+
+function isLosslessVariantName(fileName: string): boolean {
+  return /lossless/i.test(fileName);
 }
 
 export = Image;

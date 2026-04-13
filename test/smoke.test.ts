@@ -398,7 +398,8 @@ test('GET /images/:id/grouped/html includes group search controls', async () => 
   assert.match(html, /id="gallery-search-clear"/);
   assert.match(html, /Total group size:/);
   assert.match(html, /Original<\/span><strong>/);
-  assert.match(html, /Variant 1<\/span><strong>/);
+  assert.match(html, /Lossy<\/span><strong>/);
+  assert.match(html, /Lossless<\/span><strong>/);
   assert.match(html, /View group/);
   assert.match(html, /Copy link/);
   assert.match(html, />ZIP</);
