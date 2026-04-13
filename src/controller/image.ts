@@ -1611,30 +1611,28 @@ class Image {
     ].map(item => {
       if (!item.variant) {
         return `
-        <div class="image-set-card empty">
-          <div class="image-set-label">${item.label}</div>
-          <div class="image-set-preview empty"><span>${item.emptyText}</span></div>
-          <div class="image-set-name">Not available</div>
-          <div class="image-set-size">-</div>
-        </div>
+         <div class="image-set-card empty">
+           <div class="image-set-label">${item.label}</div>
+           <div class="image-set-preview empty"><span>${item.emptyText}</span></div>
+           <div class="image-set-name">Not available</div>
+         </div>
       `;
       }
 
-      const safeVariantName = encodeURIComponent(item.variant.name);
-      const variantUrl = `/images/${folderId}/files/${safeVariantName}`;
-      const escapedVariantName = escapeHtml(item.variant.name);
-      return `
-        <div class="image-set-card">
-          <div class="image-set-label">${item.label}${item.compressionText ? ` <span class="compression-chip ${item.compressionClass}">${item.compressionText}</span>` : ''}</div>
-          <div class="image-set-preview" data-preview-url="${escapeHtml(variantUrl)}" data-preview-name="${escapedVariantName}" onclick="openDetailLightbox(this)" onkeydown="handleDetailPreviewKeydown(event, this)" tabindex="0" role="button" aria-label="Preview ${escapedVariantName}">
-            <img src="${variantUrl}" alt="${escapedVariantName}">
-            <div class="image-set-overlay">Click to preview</div>
-          </div>
-          <div class="image-set-name">${escapedVariantName}</div>
-          <div class="image-set-size">${formatFileSize(item.variant.sizeBytes)}</div>
-          <a class="download-btn" href="${variantUrl}" download="${escapedVariantName}">Download</a>
-        </div>
-      `;
+       const safeVariantName = encodeURIComponent(item.variant.name);
+       const variantUrl = `/images/${folderId}/files/${safeVariantName}`;
+       const escapedVariantName = escapeHtml(item.variant.name);
+       return `
+         <div class="image-set-card">
+           <div class="image-set-label">${item.label}${item.compressionText ? ` <span class="compression-chip ${item.compressionClass}">${item.compressionText}</span>` : ''} <span class="image-set-size-inline">${formatFileSize(item.variant.sizeBytes)}</span></div>
+           <div class="image-set-preview" data-preview-url="${escapeHtml(variantUrl)}" data-preview-name="${escapedVariantName}" onclick="openDetailLightbox(this)" onkeydown="handleDetailPreviewKeydown(event, this)" tabindex="0" role="button" aria-label="Preview ${escapedVariantName}">
+             <img src="${variantUrl}" alt="${escapedVariantName}">
+             <div class="image-set-overlay">Click to preview</div>
+           </div>
+           <div class="image-set-name">${escapedVariantName}</div>
+           <a class="download-btn" href="${variantUrl}" download="${escapedVariantName}">Download</a>
+         </div>
+       `;
     });
 
     const imagesHtml = `
@@ -1651,16 +1649,15 @@ class Image {
       <div class="image-set-section">
         <h4>Image Set (Original + Variants)</h4>
         <div class="image-set-grid">
-          <div class="image-set-card">
-            <div class="image-set-label">Original</div>
-            <div class="image-set-preview" data-preview-url="${escapeHtml(fileUrl)}" data-preview-name="${escapedFileName}" onclick="openDetailLightbox(this)" onkeydown="handleDetailPreviewKeydown(event, this)" tabindex="0" role="button" aria-label="Preview ${escapedFileName}">
-              <img src="${fileUrl}" alt="${escapedFileName}">
-              <div class="image-set-overlay">Click to preview</div>
-            </div>
-            <div class="image-set-name">${escapedFileName}</div>
-            <div class="image-set-size">${formatFileSize(group.original.sizeBytes)}</div>
-            <a class="download-btn" href="${fileUrl}" download="${escapedFileName}">Download</a>
-          </div>
+           <div class="image-set-card">
+             <div class="image-set-label">Original <span class="image-set-size-inline">${formatFileSize(group.original.sizeBytes)}</span></div>
+             <div class="image-set-preview" data-preview-url="${escapeHtml(fileUrl)}" data-preview-name="${escapedFileName}" onclick="openDetailLightbox(this)" onkeydown="handleDetailPreviewKeydown(event, this)" tabindex="0" role="button" aria-label="Preview ${escapedFileName}">
+               <img src="${fileUrl}" alt="${escapedFileName}">
+               <div class="image-set-overlay">Click to preview</div>
+             </div>
+             <div class="image-set-name">${escapedFileName}</div>
+             <a class="download-btn" href="${fileUrl}" download="${escapedFileName}">Download</a>
+           </div>
           ${variantCards.join('')}
         </div>
       </div>
@@ -1850,12 +1847,19 @@ class Image {
             word-break: break-word;
           }
 
-          .image-set-size {
-            font-size: 12px;
-            color: #999;
-          }
+           .image-set-size {
+             font-size: 12px;
+             color: #999;
+           }
 
-          .download-btn {
+           .image-set-size-inline {
+             margin-left: 8px;
+             font-size: 12px;
+             color: #999;
+             font-weight: 400;
+           }
+
+           .download-btn {
             display: inline-block;
             margin-top: 8px;
             padding: 8px 12px;
