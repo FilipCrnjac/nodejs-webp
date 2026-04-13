@@ -662,10 +662,10 @@ class Image {
               </div>
             </div>
             <div class="image-wrapper small ${lossyVariant ? '' : 'empty'}" ${lossyVariant ? `data-image-url="${escapeHtml(lossyVariantUrl)}" data-image-name="${escapeHtml(lossyVariant.name)}" data-group-images="${encodedGroupImageSet}" data-group-index="1" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(lossyVariant.name)}"` : ''}>
-              ${lossyVariant ? `<img src="${lossyVariantUrl}" alt="${escapeHtml(lossyVariant.name)}" onload="doneLoading(${JSON.stringify(lossyVariant.name)})" title="Lossy variant">` : `<span class="slot-label">No lossy</span>`}
+               ${lossyVariant ? `<img src="${lossyVariantUrl}" alt="${escapeHtml(lossyVariant.name)}" onload="doneLoading(${JSON.stringify(lossyVariant.name)})" title="Lossy variant"><div class="image-overlay"><svg class="zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path><path d="M11 8v6M8 11h6"></path></svg></div>` : `<span class="slot-label">No lossy</span>`}
             </div>
             <div class="image-wrapper small ${losslessVariant ? '' : 'empty'}" ${losslessVariant ? `data-image-url="${escapeHtml(losslessVariantUrl)}" data-image-name="${escapeHtml(losslessVariant.name)}" data-group-images="${encodedGroupImageSet}" data-group-index="2" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapeHtml(losslessVariant.name)}"` : ''}>
-              ${losslessVariant ? `<img src="${losslessVariantUrl}" alt="${escapeHtml(losslessVariant.name)}" onload="doneLoading(${JSON.stringify(losslessVariant.name)})" title="Lossless variant">` : `<span class="slot-label">No lossless</span>`}
+               ${losslessVariant ? `<img src="${losslessVariantUrl}" alt="${escapeHtml(losslessVariant.name)}" onload="doneLoading(${JSON.stringify(losslessVariant.name)})" title="Lossless variant"><div class="image-overlay"><svg class="zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path><path d="M11 8v6M8 11h6"></path></svg></div>` : `<span class="slot-label">No lossless</span>`}
             </div>
           </div>
           <div class="image-group-meta">

@@ -9,7 +9,7 @@ import imagesRouter = require('./routes/images');
 
 type HttpError = Error & { status?: number };
 
-const port = parseInt(process.env.PORT || '3003', 10);
+const port = parseInt(process.env.PORT || '3005', 10);
 // adjust it to your needs (default is inside project)
 process.env.UPLOADS_FOLDER = process.env.UPLOADS_FOLDER || path.join(__dirname, '../uploads/images');
 
