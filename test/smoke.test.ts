@@ -309,6 +309,7 @@ test('GET /images/:id/groups/:groupId/html shows audit metadata and download cou
   assert.match(html, /Last viewed:/);
   assert.match(html, /Image Set \(Original \+ Variants\)/);
   assert.match(html, /class="image-set-grid"/);
+  assert.match(html, /id="detail-lightbox"/);
 });
 
 test('DELETE /images/:id/groups/:groupId removes original and both variants', async () => {

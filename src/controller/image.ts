@@ -1525,15 +1525,17 @@ class Image {
     const variantCards = group.variants.slice(0, 2).map((variant: any, index: number) => {
       const safeVariantName = encodeURIComponent(variant.name);
       const variantUrl = `/images/${folderId}/files/${safeVariantName}`;
+      const escapedVariantName = escapeHtml(variant.name);
       return `
         <div class="image-set-card">
           <div class="image-set-label">Variant ${index + 1}</div>
-          <div class="image-set-preview">
-            <img src="${variantUrl}" alt="${escapeHtml(variant.name)}">
+          <div class="image-set-preview" data-preview-url="${escapeHtml(variantUrl)}" data-preview-name="${escapedVariantName}" onclick="openDetailLightbox(this)" onkeydown="handleDetailPreviewKeydown(event, this)" tabindex="0" role="button" aria-label="Preview ${escapedVariantName}">
+            <img src="${variantUrl}" alt="${escapedVariantName}">
+            <div class="image-set-overlay">Click to preview</div>
           </div>
-          <div class="image-set-name">${escapeHtml(variant.name)}</div>
+          <div class="image-set-name">${escapedVariantName}</div>
           <div class="image-set-size">${formatFileSize(variant.sizeBytes)}</div>
-          <a class="download-btn" href="${variantUrl}" download="${escapeHtml(variant.name)}">Download</a>
+          <a class="download-btn" href="${variantUrl}" download="${escapedVariantName}">Download</a>
         </div>
       `;
     });
@@ -1565,8 +1567,9 @@ class Image {
         <div class="image-set-grid">
           <div class="image-set-card">
             <div class="image-set-label">Original</div>
-            <div class="image-set-preview">
+            <div class="image-set-preview" data-preview-url="${escapeHtml(fileUrl)}" data-preview-name="${escapedFileName}" onclick="openDetailLightbox(this)" onkeydown="handleDetailPreviewKeydown(event, this)" tabindex="0" role="button" aria-label="Preview ${escapedFileName}">
               <img src="${fileUrl}" alt="${escapedFileName}">
+              <div class="image-set-overlay">Click to preview</div>
             </div>
             <div class="image-set-name">${escapedFileName}</div>
             <div class="image-set-size">${formatFileSize(group.original.sizeBytes)}</div>
@@ -1700,6 +1703,8 @@ class Image {
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            cursor: zoom-in;
           }
 
           .image-set-preview img {
@@ -1715,6 +1720,27 @@ class Image {
             color: #6b7280;
             font-size: 13px;
             font-weight: 600;
+            cursor: default;
+          }
+
+          .image-set-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(17, 24, 39, 0.1);
+            color: #fff;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            font-size: 12px;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          }
+
+          .image-set-preview:hover .image-set-overlay,
+          .image-set-preview:focus .image-set-overlay {
+            opacity: 1;
           }
 
           .image-set-name {
@@ -1750,6 +1776,52 @@ class Image {
             margin-left: 8px;
             background: #eef0f9;
             color: #2f3a5f;
+          }
+
+          #detail-lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 24px;
+          }
+
+          #detail-lightbox.open {
+            display: flex;
+          }
+
+          #detail-lightbox img {
+            max-width: 94vw;
+            max-height: 76vh;
+            object-fit: contain;
+            border-radius: 10px;
+            background: #111827;
+          }
+
+          #detail-lightbox-caption {
+            margin-top: 14px;
+            color: #e5e7eb;
+            font-size: 13px;
+            text-align: center;
+            word-break: break-word;
+          }
+
+          #detail-lightbox-close {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            font-size: 26px;
+            cursor: pointer;
           }
 
           @media (max-width: 600px) {
@@ -1791,6 +1863,51 @@ class Image {
 
           ${imagesHtml}
         </div>
+        <div id="detail-lightbox" onclick="closeDetailLightbox()">
+          <button id="detail-lightbox-close" onclick="closeDetailLightbox()" aria-label="Close preview">&times;</button>
+          <img id="detail-lightbox-image" src="" alt="" onclick="event.stopPropagation()">
+          <div id="detail-lightbox-caption"></div>
+        </div>
+        <script>
+          function openDetailLightbox(preview) {
+            if (!preview || preview.classList.contains('empty')) {
+              return;
+            }
+
+            const url = preview.dataset.previewUrl || '';
+            const name = preview.dataset.previewName || '';
+            if (!url) {
+              return;
+            }
+
+            const modal = document.getElementById('detail-lightbox');
+            document.getElementById('detail-lightbox-image').src = url;
+            document.getElementById('detail-lightbox-image').alt = name;
+            document.getElementById('detail-lightbox-caption').textContent = name;
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+          }
+
+          function closeDetailLightbox() {
+            const modal = document.getElementById('detail-lightbox');
+            modal.classList.remove('open');
+            document.getElementById('detail-lightbox-image').src = '';
+            document.body.style.overflow = '';
+          }
+
+          function handleDetailPreviewKeydown(event, preview) {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openDetailLightbox(preview);
+            }
+          }
+
+          document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+              closeDetailLightbox();
+            }
+          });
+        </script>
       </body>
       </html>
     `;
