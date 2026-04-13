@@ -77,6 +77,7 @@ class UploadService {
           await runConvertConcurrently(req, lossyQuality, losslessQuality);
           logExecutionTime(startTimeConversion, 'Concurrent conversion');
           imageAuditService.recordUpload(userId, req.file.filename, lossyQuality, losslessQuality);
+          const uploadedGroupId = encodeURIComponent(path.parse(req.file.filename).name);
 
           const html = `
             <!DOCTYPE html>
@@ -370,6 +371,7 @@ class UploadService {
                     </div>
 
                     <div class="actions">
+                      <a class="button button-primary" href="/images/${userId}/groups/${uploadedGroupId}/html">Open uploaded group</a>
                       <a class="button button-primary" href="/images/${userId}/html">View images</a>
                       <a class="button button-secondary" href="/uploads">Upload another image</a>
                       <a class="button button-secondary" href="/">Back to app</a>

@@ -447,6 +447,8 @@ test('POST /uploads stores the original image and two webp variants', async () =
 
   assert.equal(response.status, 200);
   assert.match(html, /View images/);
+  assert.match(html, /Open uploaded group/);
+  assert.match(html, /\/images\/1\/groups\/pixel-\d+\/html/);
   assert.equal(files.length, 3);
   assert.ok(files.some(file => /pixel-\d+\.png/.test(file)));
   assert.ok(files.some(file => /75-lossless_pixel-\d+\.webp/.test(file)));
