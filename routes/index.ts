@@ -23,9 +23,9 @@ router.get('/', function(req: Request, res: Response) {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           min-height: 100vh;
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
-          padding: 20px;
+          padding: 24px 20px;
         }
 
         .container {
@@ -91,6 +91,10 @@ router.get('/', function(req: Request, res: Response) {
           padding: 40px 30px;
           display: none;
           animation: fadeIn 0.3s ease;
+        }
+
+        .tab-panels {
+          min-height: 560px;
         }
 
         .content.active {
@@ -359,6 +363,7 @@ router.get('/', function(req: Request, res: Response) {
           <button class="tab-button" onclick="switchTab(event, 'gallery')">Gallery</button>
         </div>
 
+        <div class="tab-panels">
         <!-- HOME TAB -->
         <div id="home" class="content active">
           <h2>Welcome to Image Upload Studio</h2>
@@ -487,6 +492,7 @@ router.get('/', function(req: Request, res: Response) {
             <a id="my-images-link" href="#" class="cta-button">Open My Gallery →</a>
           </p>
         </div>
+        </div>
 
         <div class="footer">
           <p>© 2026 Image Upload Studio. All images are securely stored and optimized.</p>
@@ -527,22 +533,52 @@ router.get('/', function(req: Request, res: Response) {
         }
 
         function setToken(value) {
-          localStorage.setItem('access_token', value || '');
+          const normalizedToken = hasUsableAccessToken(value || '') ? (value || '') : '';
+          localStorage.setItem('access_token', normalizedToken);
           const tokenEl = document.getElementById('token');
           const statusEl = document.getElementById('status');
-          if (value) {
-            tokenEl.textContent = value;
+          if (normalizedToken) {
+            tokenEl.textContent = normalizedToken;
             statusEl.textContent = '✓ Authenticated';
             statusEl.className = 'status logged-in';
           } else {
             tokenEl.textContent = '(none)';
             statusEl.textContent = '✗ Not authenticated';
             statusEl.className = 'status logged-out';
+            localStorage.removeItem('user_id');
           }
-          updateAuthButtons(Boolean(value));
+          updateAuthButtons(Boolean(normalizedToken));
           updateGalleryLink();
           updateUploadAccess();
           scheduleSilentRefresh();
+        }
+
+        function hasUsableAccessToken(token) {
+          if (!token || typeof token !== 'string') {
+            return false;
+          }
+
+          const payload = decodeJwtPayload(token);
+          if (!payload || typeof payload.exp !== 'number') {
+            return false;
+          }
+
+          return payload.exp * 1000 > Date.now();
+        }
+
+        function decodeJwtPayload(token) {
+          try {
+            const parts = token.split('.');
+            if (parts.length < 2) {
+              return null;
+            }
+
+            const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+            return JSON.parse(atob(padded));
+          } catch {
+            return null;
+          }
         }
 
         function scheduleSilentRefresh() {
@@ -551,7 +587,7 @@ router.get('/', function(req: Request, res: Response) {
             silentRefreshTimer = null;
           }
 
-          const hasToken = Boolean(localStorage.getItem('access_token'));
+          const hasToken = hasUsableAccessToken(localStorage.getItem('access_token') || '');
           if (!hasToken) {
             return;
           }
@@ -573,8 +609,7 @@ router.get('/', function(req: Request, res: Response) {
             if (!response.ok) {
               setToken('');
               localStorage.removeItem('user_id');
-              setActiveTab('login');
-              showToast('Session expired. Please sign in again.', 'info');
+              redirectToSessionExpired('expired');
               return false;
             }
 
@@ -587,9 +622,15 @@ router.get('/', function(req: Request, res: Response) {
           } catch {
             setToken('');
             localStorage.removeItem('user_id');
-            setActiveTab('login');
-            showToast('Could not refresh session. Please sign in again.', 'info');
+            redirectToSessionExpired('refresh_failed');
             return false;
+          }
+        }
+
+        function redirectToSessionExpired(reason = 'expired') {
+          const target = '/session-expired?reason=' + encodeURIComponent(reason);
+          if (window.location.pathname !== '/session-expired') {
+            window.location.replace(target);
           }
         }
 
@@ -628,7 +669,7 @@ router.get('/', function(req: Request, res: Response) {
         }
 
         function updateUploadAccess() {
-          const hasToken = Boolean(localStorage.getItem('access_token'));
+          const hasToken = hasUsableAccessToken(localStorage.getItem('access_token') || '');
           const note = document.getElementById('upload-login-note');
           const fileInput = document.getElementById('home-upload-file');
           const dropzone = document.getElementById('home-upload-dropzone');
@@ -813,11 +854,12 @@ router.get('/', function(req: Request, res: Response) {
 
         function updateGalleryLink() {
           const userId = localStorage.getItem('user_id') || '';
+          const hasToken = hasUsableAccessToken(localStorage.getItem('access_token') || '');
           const container = document.getElementById('gallery-link-container');
           const link = document.getElementById('my-images-link');
           const note = document.getElementById('gallery-login-note');
           
-          if (userId) {
+          if (userId && hasToken) {
             link.href = '/images/' + userId + '/grouped/html';
             link.textContent = '👤 Open My Gallery (User ' + userId + ') →';
             container.style.display = '';
@@ -864,10 +906,9 @@ router.get('/', function(req: Request, res: Response) {
           const formData = new FormData(form);
           const token = localStorage.getItem('access_token') || '';
 
-          if (!token) {
-            status.style.display = 'block';
-            status.style.color = '#c62828';
-            status.textContent = 'Please sign in first to upload.';
+          if (!hasUsableAccessToken(token)) {
+            setToken('');
+            redirectToSessionExpired('upload_requires_login');
             return;
           }
 
@@ -926,7 +967,14 @@ router.get('/', function(req: Request, res: Response) {
         setActiveTab(initialTab);
 
         // Initialize on page load
-        setToken(localStorage.getItem('access_token') || '');
+        const storedToken = localStorage.getItem('access_token') || '';
+        if (storedToken && !hasUsableAccessToken(storedToken)) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user_id');
+          redirectToSessionExpired('expired');
+        } else {
+          setToken(storedToken);
+        }
       </script>
     </body>
     </html>
@@ -998,6 +1046,72 @@ router.get('/login', function(req: Request, res: Response) {
       <script>
         window.location.replace('/?tab=login');
       </script>
+    </body>
+    </html>
+  `;
+
+  return res.type('.html').send(html);
+});
+
+router.get('/session-expired', function(req: Request, res: Response) {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Session Expired</title>
+      <style>
+        body {
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+
+        .card {
+          background: #fff;
+          border-radius: 16px;
+          max-width: 580px;
+          width: 100%;
+          padding: 36px 26px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+          text-align: center;
+        }
+
+        h1 {
+          margin: 0 0 12px;
+          color: #222;
+        }
+
+        p {
+          color: #666;
+          line-height: 1.7;
+          margin: 0 auto 24px;
+          max-width: 460px;
+        }
+
+        a {
+          display: inline-block;
+          padding: 12px 20px;
+          border-radius: 10px;
+          color: #fff;
+          text-decoration: none;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          font-weight: 600;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>Session expired</h1>
+        <p>Your login session is no longer valid. Please sign in again to continue uploading and managing your gallery.</p>
+        <a href="/?tab=login">Go to Sign In</a>
+      </div>
     </body>
     </html>
   `;

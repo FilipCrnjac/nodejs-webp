@@ -90,7 +90,17 @@ test('GET / includes silent auth refresh hooks', async () => {
 
   assert.equal(response.status, 200);
   assert.match(html, /scheduleSilentRefresh/);
-  assert.match(html, /Session expired\. Please sign in again\./);
+  assert.match(html, /redirectToSessionExpired/);
+  assert.match(html, /tab-panels/);
+});
+
+test('GET /session-expired returns relogin helper screen', async () => {
+  const response = await fetch(createUrl('/session-expired'));
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /Session expired/i);
+  assert.match(html, /Go to Sign In/);
 });
 
 test('GET /login returns login screen', async () => {
