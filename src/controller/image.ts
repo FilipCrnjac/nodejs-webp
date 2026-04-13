@@ -675,9 +675,12 @@ class Image {
               <div class="group-size-item"><span>Variant 2</span><strong>${variantTwoSize}</strong></div>
             </div>
             <div class="image-variants">${group.variants.length} variant${group.variants.length !== 1 ? 's' : ''}</div>
-            <a href="${shareLink}" class="share-link" title="Share this group">🔗 Share</a>
-            <a href="${downloadGroupLink}" class="download-group-link" title="Download original and variants as ZIP">⬇️ Download ZIP</a>
-            <button class="delete-group-btn" data-group-id="${escapeHtml(group.originalName)}" onclick="deleteGroupFromButton(this, event)">🗑️ Delete group</button>
+            <div class="group-actions">
+              <a href="${shareLink}" class="group-action-btn view-group-btn" title="Open this group details page">View group</a>
+              <button class="group-action-btn copy-link-btn" data-share-link="${escapeHtml(shareLink)}" onclick="copyGroupLink(this, event)">Copy link</button>
+              <a href="${downloadGroupLink}" class="group-action-btn zip-btn" title="Download original and variants as ZIP">ZIP</a>
+              <button class="group-action-btn delete-group-btn" data-group-id="${escapeHtml(group.originalName)}" onclick="deleteGroupFromButton(this, event)">Delete</button>
+            </div>
           </div>
         </div>
       `;
@@ -1070,51 +1073,43 @@ class Image {
             margin-top: 4px;
           }
 
-          .share-link {
-            display: inline-block;
+          .group-actions {
             margin-top: 8px;
-            padding: 6px 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-            text-align: center;
-            transition: transform 0.2s ease;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
           }
 
-          .share-link:hover {
-            transform: scale(1.05);
-          }
-
-          .download-group-link {
-            display: inline-block;
-            margin-top: 6px;
-            padding: 6px 10px;
-            background: #eef0f9;
-            color: #2f3a5f;
-            text-decoration: none;
+          .group-action-btn {
+            border: none;
             border-radius: 4px;
+            padding: 6px 8px;
             font-size: 11px;
             font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            line-height: 1;
           }
 
-          .download-group-link:hover {
+          .view-group-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+          }
+
+          .copy-link-btn,
+          .zip-btn {
+            background: #eef0f9;
+            color: #2f3a5f;
+          }
+
+          .copy-link-btn:hover,
+          .zip-btn:hover {
             background: #e2e7fb;
           }
 
           .delete-group-btn {
-            margin-top: 8px;
-            padding: 8px 10px;
-            border: none;
-            border-radius: 4px;
             background: #d32f2f;
-            color: white;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s ease;
+            color: #fff;
           }
 
           .delete-group-btn:hover {
@@ -1465,6 +1460,36 @@ class Image {
               location.reload();
             } else {
               alert('Failed to delete image group');
+            }
+          }
+
+          async function copyGroupLink(button, event) {
+            if (event) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+
+            const relativeLink = button?.dataset?.shareLink || '';
+            if (!relativeLink) {
+              return;
+            }
+
+            const fullLink = new URL(relativeLink, window.location.origin).toString();
+
+            try {
+              if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(fullLink);
+              } else {
+                const tmp = document.createElement('textarea');
+                tmp.value = fullLink;
+                document.body.appendChild(tmp);
+                tmp.select();
+                document.execCommand('copy');
+                document.body.removeChild(tmp);
+              }
+              alert('Group link copied.');
+            } catch {
+              alert('Failed to copy link.');
             }
           }
 
