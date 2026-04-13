@@ -8,6 +8,7 @@
     "prestart": "npm run build --silent",
     "start": "node dist/server.js",
     "dev": "tsc --watch",
+    "dev:server": "nodemon --watch . --ext ts,json --exec \"npm run build --silent && node dist/server.js\"",
     "test": "npm run build --silent && node --test dist/test/**/*.test.js"
   },
   "author": "",
