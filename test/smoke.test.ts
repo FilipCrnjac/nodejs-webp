@@ -275,6 +275,26 @@ test('DELETE /images/:id/groups/:groupId removes original and both variants', as
   assert.deepEqual(fs.readdirSync(path.join(uploadsRoot, '13')), []);
 });
 
+test('GET /images/:id/groups/:groupId/download returns a zip archive', async () => {
+  fs.mkdirSync(path.join(uploadsRoot, '13'), { recursive: true });
+  fs.writeFileSync(path.join(uploadsRoot, '13', 'sample.jpeg'), 'demo');
+  fs.writeFileSync(path.join(uploadsRoot, '13', '75-lossy_sample.webp'), 'demo');
+  fs.writeFileSync(path.join(uploadsRoot, '13', '75-lossless_sample.webp'), 'demo');
+
+  const { token } = await login('user13', 'password13');
+  const response = await fetch(createUrl('/images/13/groups/sample/download'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const bytes = new Uint8Array(await response.arrayBuffer());
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type') || '', /application\/zip/);
+  assert.equal(bytes[0], 80); // P
+  assert.equal(bytes[1], 75); // K
+});
+
 test('GET /images/:id/grouped/html includes pagination controls when many groups exist', async () => {
   const folderPath = path.join(uploadsRoot, '13');
   fs.mkdirSync(folderPath, { recursive: true });

@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
+import { spawn } from 'child_process';
 
 import express, { Request, Response } from 'express';
 
@@ -169,6 +170,66 @@ router.delete('/:id/groups/:groupId', async function(req: Request, res: Response
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: true, message: 'Failed to delete image group.' });
+  }
+});
+
+/* GET whole image group as ZIP (original + variants) */
+router.get('/:id/groups/:groupId/download', async function(req: Request, res: Response) {
+  const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
+  if (!folderId) {
+    return null;
+  }
+
+  let groupId = '';
+  try {
+    groupId = decodeURIComponent(String(req.params.groupId || '')).trim();
+  } catch {
+    return res.status(400).json({ error: true, message: 'Invalid group id!' });
+  }
+
+  if (!groupId) {
+    return res.status(400).json({ error: true, message: 'Invalid group id!' });
+  }
+
+  const folderPath = path.join(process.env.UPLOADS_FOLDER!, String(folderId));
+
+  try {
+    const filesInFolder = await fs.readdir(folderPath);
+    const escapedGroupId = escapeRegExp(groupId);
+    const groupPattern = new RegExp(`^(?:${escapedGroupId}\\.[^/\\\\]+|\\d+-(?:lossy|lossless)_${escapedGroupId}\\.webp|${escapedGroupId}_\\d+-(?:lossy|lossless)\\.webp)$`);
+    const groupFiles = filesInFolder
+      .filter(file => groupPattern.test(file))
+      .map(file => path.join(folderPath, file));
+
+    if (groupFiles.length === 0) {
+      return res.status(404).json({ error: true, message: 'Image group not found!' });
+    }
+
+    const safeArchiveName = `${groupId.replace(/[^a-zA-Z0-9._-]/g, '_') || 'group'}.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeArchiveName}"`);
+
+    const zipProcess = spawn('zip', ['-j', '-q', '-', ...groupFiles], {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    zipProcess.on('error', () => {
+      if (!res.headersSent) {
+        res.status(500).json({ error: true, message: 'Failed to create archive.' });
+      }
+    });
+
+    zipProcess.stdout.pipe(res);
+    zipProcess.on('close', code => {
+      if (code !== 0 && !res.headersSent) {
+        res.status(500).json({ error: true, message: 'Failed to create archive.' });
+      }
+    });
+
+    return null;
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: true, message: 'Failed to create archive.' });
   }
 });
 

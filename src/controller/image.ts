@@ -629,6 +629,7 @@ class Image {
       const escapedFileName = escapeHtml(group.original.name);
       const groupId = encodeURIComponent(group.originalName);
       const shareLink = `/images/${folderId}/groups/${groupId}/html`;
+      const downloadGroupLink = `/images/${folderId}/groups/${groupId}/download`;
 
       const variantOne = group.variants[0];
       const variantTwo = group.variants[1];
@@ -667,6 +668,7 @@ class Image {
             <div class="image-size">${formatFileSize(group.totalSize)}</div>
             <div class="image-variants">${group.variants.length} variant${group.variants.length !== 1 ? 's' : ''}</div>
             <a href="${shareLink}" class="share-link" title="Share this group">🔗 Share</a>
+            <a href="${downloadGroupLink}" class="download-group-link" title="Download original and variants as ZIP">⬇️ Download ZIP</a>
             <button class="delete-group-btn" data-group-id="${escapeHtml(group.originalName)}" onclick="deleteGroupFromButton(this, event)">🗑️ Delete group</button>
           </div>
         </div>
@@ -1047,6 +1049,22 @@ class Image {
 
           .share-link:hover {
             transform: scale(1.05);
+          }
+
+          .download-group-link {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 6px 10px;
+            background: #eef0f9;
+            color: #2f3a5f;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+          }
+
+          .download-group-link:hover {
+            background: #e2e7fb;
           }
 
           .delete-group-btn {
@@ -1458,6 +1476,7 @@ class Image {
     const safeOriginalName = encodeURIComponent(group.original.name);
     const fileUrl = `/images/${folderId}/files/${safeOriginalName}`;
     const escapedFileName = escapeHtml(group.original.name);
+    const groupZipUrl = `/images/${folderId}/groups/${encodeURIComponent(group.originalName)}/download`;
 
     let imagesHtml = `
       <div class="group-main">
@@ -1468,6 +1487,7 @@ class Image {
         <p style="color: #999; margin-top: 10px;">Original image • ${formatFileSize(group.original.sizeBytes)}</p>
         <p style="color: #999; margin-top: 4px;">Total group size: ${formatFileSize(group.totalSize)}</p>
         <a class="download-btn" href="${fileUrl}" download="${escapedFileName}">Download original</a>
+        <a class="download-btn secondary" href="${groupZipUrl}">Download full group ZIP</a>
       </div>
     `;
 
@@ -1664,6 +1684,12 @@ class Image {
 
           .download-btn:hover {
             transform: translateY(-2px);
+          }
+
+          .download-btn.secondary {
+            margin-left: 8px;
+            background: #eef0f9;
+            color: #2f3a5f;
           }
 
           @media (max-width: 600px) {
