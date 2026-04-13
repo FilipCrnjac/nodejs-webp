@@ -677,8 +677,10 @@ class Image {
             <div class="image-variants">${group.variants.length} variant${group.variants.length !== 1 ? 's' : ''}</div>
             <div class="group-actions">
               <a href="${shareLink}" class="group-action-btn view-group-btn" title="Open this group details page">View group</a>
-              <button class="group-action-btn copy-link-btn" data-share-link="${escapeHtml(shareLink)}" onclick="copyGroupLink(this, event)">Copy link</button>
-              <a href="${downloadGroupLink}" class="group-action-btn zip-btn" title="Download original and variants as ZIP">ZIP</a>
+              <div class="group-actions-secondary">
+                <button class="group-action-btn copy-link-btn" data-share-link="${escapeHtml(shareLink)}" onclick="copyGroupLink(this, event)">Copy link</button>
+                <a href="${downloadGroupLink}" class="group-action-btn zip-btn" title="Download original and variants as ZIP">ZIP</a>
+              </div>
               <button class="group-action-btn delete-group-btn" data-group-id="${escapeHtml(group.originalName)}" onclick="deleteGroupFromButton(this, event)">Delete</button>
             </div>
           </div>
@@ -1075,8 +1077,13 @@ class Image {
 
           .group-actions {
             margin-top: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+          }
+
+          .group-actions-secondary {
             display: flex;
-            flex-wrap: wrap;
             gap: 6px;
           }
 
@@ -1094,6 +1101,8 @@ class Image {
           .view-group-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #fff;
+            grid-column: 1 / -1;
+            text-align: center;
           }
 
           .copy-link-btn,
@@ -1110,6 +1119,7 @@ class Image {
           .delete-group-btn {
             background: #d32f2f;
             color: #fff;
+            width: 100%;
           }
 
           .delete-group-btn:hover {
