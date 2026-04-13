@@ -310,6 +310,8 @@ test('GET /images/:id/groups/:groupId/html shows audit metadata and download cou
   assert.match(html, /Image Set \(Original \+ Variants\)/);
   assert.match(html, /class="image-set-grid"/);
   assert.match(html, /id="detail-lightbox"/);
+  assert.match(html, /compression-lossy/);
+  assert.match(html, /compression-lossless/);
 });
 
 test('DELETE /images/:id/groups/:groupId removes original and both variants', async () => {
@@ -398,8 +400,10 @@ test('GET /images/:id/grouped/html includes group search controls', async () => 
   assert.match(html, /id="gallery-search-clear"/);
   assert.match(html, /Total group size:/);
   assert.match(html, /Original<\/span><strong>/);
-  assert.match(html, /Lossy<\/span><strong>/);
-  assert.match(html, /Lossless<\/span><strong>/);
+  assert.match(html, /Lossy/);
+  assert.match(html, /Lossless/);
+  assert.match(html, /compression-lossy/);
+  assert.match(html, /compression-lossless/);
   assert.match(html, /View group/);
   assert.match(html, /Copy link/);
   assert.match(html, />ZIP</);

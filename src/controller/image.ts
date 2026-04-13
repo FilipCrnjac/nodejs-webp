@@ -636,6 +636,8 @@ class Image {
       const originalSize = formatFileSize(group.original.sizeBytes);
       const lossySize = lossyVariant ? formatFileSize(lossyVariant.sizeBytes) : '—';
       const losslessSize = losslessVariant ? formatFileSize(losslessVariant.sizeBytes) : '—';
+      const lossyCompression = lossyVariant ? formatCompressionPercent(group.original.sizeBytes, lossyVariant.sizeBytes) : '';
+      const losslessCompression = losslessVariant ? formatCompressionPercent(group.original.sizeBytes, losslessVariant.sizeBytes) : '';
 
       const lossyVariantUrl = lossyVariant ? `/images/${folderId}/files/${encodeURIComponent(lossyVariant.name)}` : '';
       const losslessVariantUrl = losslessVariant ? `/images/${folderId}/files/${encodeURIComponent(losslessVariant.name)}` : '';
@@ -671,8 +673,8 @@ class Image {
             <div class="image-size group-total-size">Total group size: ${formatFileSize(group.totalSize)}</div>
             <div class="group-size-breakdown">
               <div class="group-size-item"><span>Original</span><strong>${originalSize}</strong></div>
-              <div class="group-size-item"><span>Lossy</span><strong>${lossySize}</strong></div>
-              <div class="group-size-item"><span>Lossless</span><strong>${losslessSize}</strong></div>
+              <div class="group-size-item"><span>Lossy ${lossyCompression ? `<em class="compression-chip compression-lossy">${lossyCompression}</em>` : ''}</span><strong>${lossySize}</strong></div>
+              <div class="group-size-item"><span>Lossless ${losslessCompression ? `<em class="compression-chip compression-lossless">${losslessCompression}</em>` : ''}</span><strong>${losslessSize}</strong></div>
             </div>
             <div class="image-variants">${group.variants.length} variant${group.variants.length !== 1 ? 's' : ''}</div>
             <div class="group-actions">
@@ -1067,6 +1069,20 @@ class Image {
           .group-size-item strong {
             color: #111827;
             font-size: 11px;
+          }
+
+          .compression-chip {
+            margin-left: 4px;
+            font-style: normal;
+            font-weight: 700;
+          }
+
+          .compression-lossy {
+            color: #15803d;
+          }
+
+          .compression-lossless {
+            color: #b91c1c;
           }
 
           .image-variants {
@@ -1578,8 +1594,20 @@ class Image {
     const lossyVariant = group.variants.find((variant: any) => isLossyVariantName(variant.name));
     const losslessVariant = group.variants.find((variant: any) => isLosslessVariantName(variant.name));
     const variantCards = [
-      { label: 'Lossy', variant: lossyVariant, emptyText: 'No lossy variant' },
-      { label: 'Lossless', variant: losslessVariant, emptyText: 'No lossless variant' },
+      {
+        label: 'Lossy',
+        variant: lossyVariant,
+        emptyText: 'No lossy variant',
+        compressionText: lossyVariant ? formatCompressionPercent(group.original.sizeBytes, lossyVariant.sizeBytes) : '',
+        compressionClass: 'compression-lossy',
+      },
+      {
+        label: 'Lossless',
+        variant: losslessVariant,
+        emptyText: 'No lossless variant',
+        compressionText: losslessVariant ? formatCompressionPercent(group.original.sizeBytes, losslessVariant.sizeBytes) : '',
+        compressionClass: 'compression-lossless',
+      },
     ].map(item => {
       if (!item.variant) {
         return `
@@ -1597,7 +1625,7 @@ class Image {
       const escapedVariantName = escapeHtml(item.variant.name);
       return `
         <div class="image-set-card">
-          <div class="image-set-label">${item.label}</div>
+          <div class="image-set-label">${item.label}${item.compressionText ? ` <span class="compression-chip ${item.compressionClass}">${item.compressionText}</span>` : ''}</div>
           <div class="image-set-preview" data-preview-url="${escapeHtml(variantUrl)}" data-preview-name="${escapedVariantName}" onclick="openDetailLightbox(this)" onkeydown="handleDetailPreviewKeydown(event, this)" tabindex="0" role="button" aria-label="Preview ${escapedVariantName}">
             <img src="${variantUrl}" alt="${escapedVariantName}">
             <div class="image-set-overlay">Click to preview</div>
@@ -1749,6 +1777,20 @@ class Image {
             font-weight: 700;
             color: #4f46e5;
             margin-bottom: 10px;
+          }
+
+          .compression-chip {
+            margin-left: 4px;
+            font-style: normal;
+            font-weight: 700;
+          }
+
+          .compression-lossy {
+            color: #15803d;
+          }
+
+          .compression-lossless {
+            color: #b91c1c;
           }
 
           .image-set-preview {
@@ -1983,6 +2025,15 @@ function formatFileSize(sizeBytes: number): string {
   }
 
   return `${(sizeKb / 1024).toFixed(2)} MB`;
+}
+
+function formatCompressionPercent(originalBytes: number, variantBytes: number): string {
+  if (originalBytes <= 0) {
+    return '0%';
+  }
+
+  const percent = Math.round(((originalBytes - variantBytes) / originalBytes) * 100);
+  return `${percent}%`;
 }
 
 function escapeHtml(value: string): string {
