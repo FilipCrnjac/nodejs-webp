@@ -647,7 +647,7 @@ class Image {
       const encodedGroupImageSet = escapeHtml(JSON.stringify(groupImageSet));
 
       groupsHtml += `
-        <div class="image-group-card" data-page-item="true" data-group-name="${escapeHtml(group.originalName)}">
+        <div class="image-group-card" data-page-item="true" data-group-name="${escapeHtml(group.originalName)}" data-group-link="${escapeHtml(shareLink)}" ondblclick="openGroupFromCard(event, this)">
           <div class="group-preview-grid">
             <div class="image-wrapper" data-image-url="${escapeHtml(fileUrl)}" data-image-name="${escapedFileName}" data-group-images="${encodedGroupImageSet}" data-group-index="0" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
               <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(group.original.name)})" title="Original image">
@@ -1392,6 +1392,24 @@ class Image {
             currentFilterQuery = String(query || '').trim().toLowerCase();
             currentPage = 1;
             renderPagination();
+          }
+
+          function openGroupFromCard(event, card) {
+            if (!card) {
+              return;
+            }
+
+            const target = event && event.target ? event.target : null;
+            if (target && typeof target.closest === 'function') {
+              if (target.closest('.image-wrapper') || target.closest('.group-actions') || target.closest('a') || target.closest('button')) {
+                return;
+              }
+            }
+
+            const link = card.dataset.groupLink || '';
+            if (link) {
+              window.location.href = link;
+            }
           }
 
           function openLightboxFromCard(card) {

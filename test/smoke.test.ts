@@ -404,6 +404,7 @@ test('GET /images/:id/grouped/html includes group search controls', async () => 
   assert.match(html, /Copy link/);
   assert.match(html, />ZIP</);
   assert.match(html, />Delete</);
+  assert.match(html, /ondblclick="openGroupFromCard\(event, this\)"/);
 });
 
 test('POST /uploads rejects unsupported file types before saving', async () => {
