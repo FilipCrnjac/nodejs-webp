@@ -495,6 +495,8 @@ router.get('/', function(req: Request, res: Response) {
       <div id="toast-container" class="toast-container"></div>
 
       <script>
+        let silentRefreshTimer = null;
+
         function setActiveTab(tabName) {
 
           // Hide all tabs
@@ -540,6 +542,55 @@ router.get('/', function(req: Request, res: Response) {
           updateAuthButtons(Boolean(value));
           updateGalleryLink();
           updateUploadAccess();
+          scheduleSilentRefresh();
+        }
+
+        function scheduleSilentRefresh() {
+          if (silentRefreshTimer) {
+            clearInterval(silentRefreshTimer);
+            silentRefreshTimer = null;
+          }
+
+          const hasToken = Boolean(localStorage.getItem('access_token'));
+          if (!hasToken) {
+            return;
+          }
+
+          // Keep access token fresh in the background during active sessions.
+          silentRefreshTimer = setInterval(() => {
+            refreshTokenSilently();
+          }, 45 * 60 * 1000);
+        }
+
+        async function refreshTokenSilently() {
+          try {
+            const response = await fetch('/auth/refresh', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            });
+
+            if (!response.ok) {
+              setToken('');
+              localStorage.removeItem('user_id');
+              setActiveTab('login');
+              showToast('Session expired. Please sign in again.', 'info');
+              return false;
+            }
+
+            const body = await response.json();
+            setToken(body.token || '');
+            if (body.userId) {
+              localStorage.setItem('user_id', String(body.userId));
+            }
+            return true;
+          } catch {
+            setToken('');
+            localStorage.removeItem('user_id');
+            setActiveTab('login');
+            showToast('Could not refresh session. Please sign in again.', 'info');
+            return false;
+          }
         }
 
         function updateAuthButtons(isLoggedIn) {
@@ -782,20 +833,10 @@ router.get('/', function(req: Request, res: Response) {
         }
 
         async function refreshToken() {
-          const response = await fetch('/auth/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-          });
-          const body = await response.json();
-          
-          if (!response.ok) {
-            showToast(body.message || 'Refresh failed', 'error');
-            return;
+          const refreshed = await refreshTokenSilently();
+          if (refreshed) {
+            showToast('Token refreshed', 'success');
           }
-          
-          setToken(body.token || '');
-          showToast('Token refreshed', 'success');
         }
 
         async function logout() {
@@ -836,11 +877,23 @@ router.get('/', function(req: Request, res: Response) {
           status.textContent = 'Uploading...';
 
           try {
-            const response = await fetch('/uploads', {
+            const sendUpload = async (currentToken) => fetch('/uploads', {
               method: 'POST',
-              headers: token ? { Authorization: 'Bearer ' + token } : {},
+              headers: currentToken ? { Authorization: 'Bearer ' + currentToken } : {},
               body: formData,
             });
+
+            let response = await sendUpload(token);
+            if (response.status === 401) {
+              const refreshed = await refreshTokenSilently();
+              if (!refreshed) {
+                status.style.color = '#c62828';
+                status.textContent = 'Session expired. Please sign in again.';
+                return;
+              }
+
+              response = await sendUpload(localStorage.getItem('access_token') || '');
+            }
 
             const body = await response.text();
             if (!response.ok) {

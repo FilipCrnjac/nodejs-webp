@@ -84,6 +84,15 @@ test('GET / includes home upload drag-drop and preview controls', async () => {
   assert.match(html, /id="home-upload-preview-section"/);
 });
 
+test('GET / includes silent auth refresh hooks', async () => {
+  const response = await fetch(createUrl('/'));
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /scheduleSilentRefresh/);
+  assert.match(html, /Session expired\. Please sign in again\./);
+});
+
 test('GET /login returns login screen', async () => {
   const response = await fetch(createUrl('/login'));
   const html = await response.text();
