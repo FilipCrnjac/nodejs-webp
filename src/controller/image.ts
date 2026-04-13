@@ -1522,48 +1522,60 @@ class Image {
       ? `Lossy ${groupAudit.lossyQuality} / Lossless ${groupAudit.losslessQuality}`
       : 'Unknown';
 
-    let imagesHtml = `
-      <div class="group-main">
-        <div class="image-wrapper" style="position: relative; width: 100%; padding-bottom: 100%; margin-bottom: 20px; background:#f5f5f5; border-radius: 10px; overflow: hidden;">
-          <img src="${fileUrl}" alt="${escapedFileName}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; padding: 8px;">
+    const variantCards = group.variants.slice(0, 2).map((variant: any, index: number) => {
+      const safeVariantName = encodeURIComponent(variant.name);
+      const variantUrl = `/images/${folderId}/files/${safeVariantName}`;
+      return `
+        <div class="image-set-card">
+          <div class="image-set-label">Variant ${index + 1}</div>
+          <div class="image-set-preview">
+            <img src="${variantUrl}" alt="${escapeHtml(variant.name)}">
+          </div>
+          <div class="image-set-name">${escapeHtml(variant.name)}</div>
+          <div class="image-set-size">${formatFileSize(variant.sizeBytes)}</div>
+          <a class="download-btn" href="${variantUrl}" download="${escapeHtml(variant.name)}">Download</a>
         </div>
+      `;
+    });
+
+    while (variantCards.length < 2) {
+      variantCards.push(`
+        <div class="image-set-card empty">
+          <div class="image-set-label">Variant ${variantCards.length + 1}</div>
+          <div class="image-set-preview empty"><span>No variant</span></div>
+          <div class="image-set-name">Not available</div>
+          <div class="image-set-size">-</div>
+        </div>
+      `);
+    }
+
+    const imagesHtml = `
+      <div class="group-main">
         <h3>${escapedFileName}</h3>
-        <p style="color: #999; margin-top: 10px;">Original image • ${formatFileSize(group.original.sizeBytes)}</p>
-        <p style="color: #999; margin-top: 4px;">Total group size: ${formatFileSize(group.totalSize)}</p>
+        <p style="color: #999; margin-top: 10px;">Total group size: ${formatFileSize(group.totalSize)}</p>
         <div class="audit-row"><strong>Uploaded:</strong> ${escapeHtml(uploadedAtText)}</div>
         <div class="audit-row"><strong>Last viewed:</strong> ${escapeHtml(lastViewedText)}</div>
         <div class="audit-row"><strong>Downloads:</strong> ${escapeHtml(downloadsText)}</div>
         <div class="audit-row"><strong>Quality:</strong> ${escapeHtml(qualityText)}</div>
-        <a class="download-btn" href="${fileUrl}" download="${escapedFileName}">Download original</a>
         <a class="download-btn secondary" href="${groupZipUrl}">Download full group ZIP</a>
       </div>
-    `;
 
-    if (group.variants.length > 0) {
-      imagesHtml += `<div class="variants-section"><h4>Generated WebP Variants (${group.variants.length})</h4><div class="variants-grid">`;
-      group.variants.forEach((variant: any) => {
-        const safeVariantName = encodeURIComponent(variant.name);
-        const variantUrl = `/images/${folderId}/files/${safeVariantName}`;
-        imagesHtml += `
-          <div class="variant-card">
-            <div class="variant-preview">
-              <img src="${variantUrl}" alt="${escapeHtml(variant.name)}">
-              <div class="variant-overlay">
-                <svg class="variant-zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <path d="m21 21-4.35-4.35"></path>
-                  <path d="M11 8v6M8 11h6"></path>
-                </svg>
-              </div>
+      <div class="image-set-section">
+        <h4>Image Set (Original + Variants)</h4>
+        <div class="image-set-grid">
+          <div class="image-set-card">
+            <div class="image-set-label">Original</div>
+            <div class="image-set-preview">
+              <img src="${fileUrl}" alt="${escapedFileName}">
             </div>
-            <div class="variant-name">${escapeHtml(variant.name)}</div>
-            <div class="variant-size">${formatFileSize(variant.sizeBytes)}</div>
-            <a class="download-btn" href="${variantUrl}" download="${escapeHtml(variant.name)}">Download</a>
+            <div class="image-set-name">${escapedFileName}</div>
+            <div class="image-set-size">${formatFileSize(group.original.sizeBytes)}</div>
+            <a class="download-btn" href="${fileUrl}" download="${escapedFileName}">Download</a>
           </div>
-        `;
-      });
-      imagesHtml += '</div></div>';
-    }
+          ${variantCards.join('')}
+        </div>
+      </div>
+    `;
 
     return `
       <!DOCTYPE html>
@@ -1642,83 +1654,77 @@ class Image {
             font-size: 13px;
           }
 
-          .variants-section {
-            margin-top: 40px;
+          .image-set-section {
+            margin-top: 34px;
           }
 
-          .variants-section h4 {
+          .image-set-section h4 {
             font-size: 18px;
             color: #333;
             margin-bottom: 20px;
           }
 
-          .variant-card {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 12px;
-            border-left: 4px solid #667eea;
-          }
-
-          .variants-grid {
+          .image-set-grid {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 16px;
           }
 
-          .variant-preview {
+          .image-set-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #e9edf6;
+            display: flex;
+            flex-direction: column;
+          }
+
+          .image-set-card.empty {
+            opacity: 0.75;
+          }
+
+          .image-set-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #4f46e5;
+            margin-bottom: 10px;
+          }
+
+          .image-set-preview {
             width: 100%;
-            position: relative;
-            min-height: 300px;
+            min-height: 240px;
             background: #f2f3f8;
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 10px;
-            cursor: zoom-in;
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
 
-          .variant-preview img {
-            position: absolute;
-            top: 0;
-            left: 0;
+          .image-set-preview img {
             width: 100%;
             height: 100%;
             object-fit: contain;
             padding: 6px;
           }
 
-          .variant-overlay {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(102, 126, 234, 0);
-            opacity: 0;
-            transition: background 0.2s ease, opacity 0.2s ease;
-            pointer-events: none;
+          .image-set-preview.empty {
+            border: 1px dashed #cdd3e1;
+            background: #f8faff;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 600;
           }
 
-          .variant-preview:hover .variant-overlay {
-            background: rgba(102, 126, 234, 0.22);
-            opacity: 1;
-          }
-
-          .variant-zoom-icon {
-            width: 32px;
-            height: 32px;
-            color: #fff;
-            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.22));
-          }
-
-          .variant-name {
+          .image-set-name {
             font-size: 12px;
             color: #666;
             margin-bottom: 6px;
             word-break: break-word;
           }
 
-          .variant-size {
+          .image-set-size {
             font-size: 12px;
             color: #999;
           }
@@ -1766,7 +1772,11 @@ class Image {
               justify-content: center;
             }
 
-            .variant-preview {
+            .image-set-grid {
+              grid-template-columns: 1fr;
+            }
+
+            .image-set-preview {
               min-height: 220px;
             }
           }

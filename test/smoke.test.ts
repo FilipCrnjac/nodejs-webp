@@ -297,6 +297,8 @@ test('GET /images/:id/groups/:groupId/html shows audit metadata and download cou
   assert.equal(detailResponse.status, 200);
   assert.match(html, /Downloads:<\/strong> 1/);
   assert.match(html, /Last viewed:/);
+  assert.match(html, /Image Set \(Original \+ Variants\)/);
+  assert.match(html, /class="image-set-grid"/);
 });
 
 test('DELETE /images/:id/groups/:groupId removes original and both variants', async () => {
