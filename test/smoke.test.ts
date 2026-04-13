@@ -383,6 +383,9 @@ test('GET /images/:id/grouped/html includes group search controls', async () => 
   assert.equal(response.status, 200);
   assert.match(html, /id="gallery-search-input"/);
   assert.match(html, /id="gallery-search-clear"/);
+  assert.match(html, /Total group size:/);
+  assert.match(html, /Original<\/span><strong>/);
+  assert.match(html, /Variant 1<\/span><strong>/);
 });
 
 test('POST /uploads rejects unsupported file types before saving', async () => {

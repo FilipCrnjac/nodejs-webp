@@ -633,6 +633,9 @@ class Image {
 
       const variantOne = group.variants[0];
       const variantTwo = group.variants[1];
+      const originalSize = formatFileSize(group.original.sizeBytes);
+      const variantOneSize = variantOne ? formatFileSize(variantOne.sizeBytes) : '—';
+      const variantTwoSize = variantTwo ? formatFileSize(variantTwo.sizeBytes) : '—';
 
       const variantOneUrl = variantOne ? `/images/${folderId}/files/${encodeURIComponent(variantOne.name)}` : '';
       const variantTwoUrl = variantTwo ? `/images/${folderId}/files/${encodeURIComponent(variantTwo.name)}` : '';
@@ -665,7 +668,12 @@ class Image {
           </div>
           <div class="image-group-meta">
             <div class="image-name">${escapedFileName}</div>
-            <div class="image-size">${formatFileSize(group.totalSize)}</div>
+            <div class="image-size group-total-size">Total group size: ${formatFileSize(group.totalSize)}</div>
+            <div class="group-size-breakdown">
+              <div class="group-size-item"><span>Original</span><strong>${originalSize}</strong></div>
+              <div class="group-size-item"><span>Variant 1</span><strong>${variantOneSize}</strong></div>
+              <div class="group-size-item"><span>Variant 2</span><strong>${variantTwoSize}</strong></div>
+            </div>
             <div class="image-variants">${group.variants.length} variant${group.variants.length !== 1 ? 's' : ''}</div>
             <a href="${shareLink}" class="share-link" title="Share this group">🔗 Share</a>
             <a href="${downloadGroupLink}" class="download-group-link" title="Download original and variants as ZIP">⬇️ Download ZIP</a>
@@ -1025,6 +1033,35 @@ class Image {
           .image-size {
             font-size: 12px;
             color: #999;
+          }
+
+          .group-total-size {
+            font-size: 13px;
+            color: #374151;
+            font-weight: 700;
+          }
+
+          .group-size-breakdown {
+            margin-top: 4px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 4px;
+          }
+
+          .group-size-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #6b7280;
+            padding: 4px 6px;
+            border-radius: 4px;
+            background: #f8f9fc;
+          }
+
+          .group-size-item strong {
+            color: #111827;
+            font-size: 11px;
           }
 
           .image-variants {
