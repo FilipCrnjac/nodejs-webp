@@ -91,6 +91,7 @@ test('GET / includes silent auth refresh hooks', async () => {
   assert.equal(response.status, 200);
   assert.match(html, /scheduleSilentRefresh/);
   assert.match(html, /redirectToSessionExpired/);
+  assert.match(html, /showLoginRedirectMessageFromUrl/);
   assert.match(html, /tab-panels/);
 });
 
@@ -117,7 +118,19 @@ test('GET /images without auth returns 401 JSON', async () => {
   const body = await response.json();
 
   assert.equal(response.status, 401);
-  assert.deepEqual(body, { error: true, message: 'Please, login!' });
+  assert.deepEqual(body, { error: true, code: 'AUTH_REQUIRED', message: 'Please, login!' });
+});
+
+test('GET /images without auth redirects browser document requests to login tab', async () => {
+  const response = await fetch(createUrl('/images/1/grouped/html'), {
+    redirect: 'manual',
+    headers: {
+      'sec-fetch-dest': 'document'
+    }
+  });
+
+  assert.equal(response.status, 302);
+  assert.match(response.headers.get('location') || '', /^\/\?tab=login&authMessage=/);
 });
 
 test('POST /auth/login rejects invalid credentials', async () => {

@@ -3,6 +3,12 @@ import AuthService = require('./authService');
 
 const authService = new AuthService();
 
+const AUTH_REQUIRED_ERROR = {
+  error: true,
+  code: 'AUTH_REQUIRED',
+  message: 'Please, login!'
+};
+
 const Auth = {
   isAuthenticated: (req: Request, res: Response, next: NextFunction): void | Response => {
     const authHeaderToken = extractBearerToken(req.headers.authorization);
@@ -10,7 +16,12 @@ const Auth = {
     const token = authHeaderToken || cookieToken;
 
     if (!token) {
-      return res.status(401).json({ error: true, message:'Please, login!' });
+      const fetchDest = String(req.headers['sec-fetch-dest'] || '').toLowerCase();
+      const isDocumentNavigation = fetchDest === 'document';
+      if (isDocumentNavigation && req.method === 'GET') {
+        return res.redirect('/?tab=login&authMessage=' + encodeURIComponent('Please sign in to continue.'));
+      }
+      return res.status(401).json(AUTH_REQUIRED_ERROR);
     }
 
     try {
@@ -18,7 +29,12 @@ const Auth = {
       req.userId = userId;
       return next();
     } catch (error) {
-      return res.status(401).json({ error: true, message:'Please, login!' });
+      const fetchDest = String(req.headers['sec-fetch-dest'] || '').toLowerCase();
+      const isDocumentNavigation = fetchDest === 'document';
+      if (isDocumentNavigation && req.method === 'GET') {
+        return res.redirect('/?tab=login&authMessage=' + encodeURIComponent('Your session expired. Please sign in again.'));
+      }
+      return res.status(401).json(AUTH_REQUIRED_ERROR);
     }
   }
 };

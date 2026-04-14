@@ -684,6 +684,12 @@ class Upload {
               submitBtn.disabled = false;
               progressSection.classList.remove('show');
 
+              if (xhr.status === 401) {
+                const message = getAuthErrorMessage(xhr.responseText) || 'Please sign in to continue uploading images.';
+                redirectToLoginWithMessage(message);
+                return;
+              }
+
               if (xhr.status === 200) {
                 showStatus('success', '✅ Image uploaded successfully! Processing with selected quality settings...');
                 uploadForm.reset();
@@ -717,6 +723,25 @@ class Upload {
             }
             xhr.send(formData);
           });
+
+          function getAuthErrorMessage(responseText) {
+            try {
+              const parsed = JSON.parse(responseText || '{}');
+              if (parsed && typeof parsed.message === 'string') {
+                return parsed.message;
+              }
+            } catch {
+              return '';
+            }
+            return '';
+          }
+
+          function redirectToLoginWithMessage(message) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_id');
+            const target = '/?tab=login&authMessage=' + encodeURIComponent(message || 'Please sign in to continue.');
+            window.location.replace(target);
+          }
 
           function showStatus(type, message) {
             statusDiv.className = 'status show ' + type;

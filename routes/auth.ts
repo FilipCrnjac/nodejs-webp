@@ -16,6 +16,8 @@ const loginAttempts = new Map<string, LoginAttemptState>();
 const router = express.Router();
 const authService = new AuthService();
 
+const AUTH_REQUIRED_ERROR = { error: true, code: 'AUTH_REQUIRED', message: 'Please, login!' };
+
 router.post('/register', async (req: Request, res: Response) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
@@ -77,7 +79,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
   const cookieRefresh = readCookie(req.headers.cookie, 'refresh_token');
   const refreshToken = String(providedRefresh || cookieRefresh || '');
   if (!refreshToken) {
-    return res.status(401).json({ error: true, message: 'Please, login!' });
+    return res.status(401).json(AUTH_REQUIRED_ERROR);
   }
 
   try {
@@ -91,7 +93,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
       expiresIn: 3600,
     });
   } catch (error) {
-    return res.status(401).json({ error: true, message: 'Please, login!' });
+    return res.status(401).json(AUTH_REQUIRED_ERROR);
   }
 });
 

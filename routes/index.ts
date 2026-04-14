@@ -389,6 +389,7 @@ router.get('/', function(req: Request, res: Response) {
         <!-- LOGIN/REGISTER TAB -->
         <div id="login" class="content">
           <h2>Account</h2>
+          <div id="login-redirect-message" class="info-box" style="display: none;"></div>
           
           <div style="margin: 20px 0;">
             <div>
@@ -553,6 +554,83 @@ router.get('/', function(req: Request, res: Response) {
           scheduleSilentRefresh();
         }
 
+        function buildLoginUrlWithMessage(message) {
+          const params = new URLSearchParams();
+          params.set('tab', 'login');
+          if (message) {
+            params.set('authMessage', message);
+          }
+          return '/?' + params.toString();
+        }
+
+        function redirectToLoginWithMessage(message) {
+          const text = String(message || 'Please sign in to continue.');
+          setToken('');
+          localStorage.removeItem('user_id');
+          window.location.replace(buildLoginUrlWithMessage(text));
+        }
+
+        async function parseJsonSafe(response) {
+          try {
+            return await response.json();
+          } catch {
+            return null;
+          }
+        }
+
+        function isAuthErrorResponse(response, body) {
+          if (response.status !== 401) {
+            return false;
+          }
+
+          if (body && typeof body === 'object') {
+            if (body.code === 'AUTH_REQUIRED') {
+              return true;
+            }
+            if (typeof body.message === 'string' && body.message.toLowerCase().includes('login')) {
+              return true;
+            }
+          }
+
+          return true;
+        }
+
+        async function handleAuthErrorRedirect(response, fallbackMessage) {
+          const body = await parseJsonSafe(response.clone());
+          if (!isAuthErrorResponse(response, body)) {
+            return false;
+          }
+
+          const message = body && typeof body.message === 'string' && body.message
+            ? body.message
+            : fallbackMessage;
+          redirectToLoginWithMessage(message || 'Please sign in again.');
+          return true;
+        }
+
+        function showLoginRedirectMessageFromUrl() {
+          const params = new URLSearchParams(window.location.search);
+          const message = params.get('authMessage');
+          const messageBox = document.getElementById('login-redirect-message');
+          if (!messageBox) {
+            return;
+          }
+
+          if (!message) {
+            messageBox.style.display = 'none';
+            messageBox.textContent = '';
+            return;
+          }
+
+          messageBox.textContent = message;
+          messageBox.style.display = 'block';
+
+          params.delete('authMessage');
+          const nextQuery = params.toString();
+          const nextUrl = window.location.pathname + (nextQuery ? '?' + nextQuery : '');
+          window.history.replaceState({}, '', nextUrl);
+        }
+
         function hasUsableAccessToken(token) {
           if (!token || typeof token !== 'string') {
             return false;
@@ -607,9 +685,12 @@ router.get('/', function(req: Request, res: Response) {
             });
 
             if (!response.ok) {
-              setToken('');
-              localStorage.removeItem('user_id');
-              redirectToSessionExpired('expired');
+              const redirected = await handleAuthErrorRedirect(response, 'Your session expired. Please sign in again.');
+              if (!redirected) {
+                setToken('');
+                localStorage.removeItem('user_id');
+                redirectToSessionExpired('expired');
+              }
               return false;
             }
 
@@ -907,8 +988,7 @@ router.get('/', function(req: Request, res: Response) {
           const token = localStorage.getItem('access_token') || '';
 
           if (!hasUsableAccessToken(token)) {
-            setToken('');
-            redirectToSessionExpired('upload_requires_login');
+            redirectToLoginWithMessage('Please sign in before uploading images.');
             return;
           }
 
@@ -936,13 +1016,19 @@ router.get('/', function(req: Request, res: Response) {
               response = await sendUpload(localStorage.getItem('access_token') || '');
             }
 
-            const body = await response.text();
             if (!response.ok) {
+              const redirected = await handleAuthErrorRedirect(response, 'Your session expired. Please sign in again.');
+              if (redirected) {
+                return;
+              }
+
+              const body = await response.text();
               status.style.color = '#c62828';
               status.textContent = body || 'Upload failed. Please sign in and try again.';
               return;
             }
 
+            const body = await response.text();
             document.open();
             document.write(body);
             document.close();
@@ -965,6 +1051,7 @@ router.get('/', function(req: Request, res: Response) {
 
         const initialTab = new URLSearchParams(window.location.search).get('tab') || 'home';
         setActiveTab(initialTab);
+        showLoginRedirectMessageFromUrl();
 
         // Initialize on page load
         const storedToken = localStorage.getItem('access_token') || '';

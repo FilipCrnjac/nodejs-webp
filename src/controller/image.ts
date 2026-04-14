@@ -566,6 +566,25 @@ class Image {
             currentGroupIndex = 0;
           }
 
+          function getUnauthorizedMessage(responseBody) {
+            try {
+              const parsed = JSON.parse(responseBody || '{}');
+              if (parsed && typeof parsed.message === 'string') {
+                return parsed.message;
+              }
+            } catch {
+              return '';
+            }
+            return '';
+          }
+
+          function redirectToLoginWithMessage(message) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_id');
+            const target = '/?tab=login&authMessage=' + encodeURIComponent(message || 'Please sign in to continue.');
+            window.location.replace(target);
+          }
+
           async function deleteImage() {
             const name = document.getElementById('lightbox-filename').textContent;
             if (!confirm('Delete ' + name + ' and its WebP variants?')) return;
@@ -579,6 +598,10 @@ class Image {
               alert('Image deleted successfully');
               location.reload();
             } else {
+              if (response.status === 401) {
+                redirectToLoginWithMessage(getUnauthorizedMessage(await response.text()));
+                return;
+              }
               alert('Failed to delete image');
             }
           }
@@ -1461,6 +1484,31 @@ class Image {
             document.body.style.overflow = '';
           }
 
+          async function getUnauthorizedMessage(response) {
+            try {
+              const parsed = await response.clone().json();
+              if (parsed && typeof parsed.message === 'string') {
+                return parsed.message;
+              }
+            } catch {
+              return '';
+            }
+            return '';
+          }
+
+          async function redirectIfUnauthorized(response, fallbackMessage) {
+            if (response.status !== 401) {
+              return false;
+            }
+
+            const message = (await getUnauthorizedMessage(response)) || fallbackMessage;
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_id');
+            const target = '/?tab=login&authMessage=' + encodeURIComponent(message || 'Please sign in to continue.');
+            window.location.replace(target);
+            return true;
+          }
+
           async function deleteImage() {
             const name = document.getElementById('lightbox-filename').textContent;
             if (!confirm('Delete ' + name + ' and its WebP variants?')) return;
@@ -1474,6 +1522,9 @@ class Image {
               alert('Image deleted successfully');
               location.reload();
             } else {
+              if (await redirectIfUnauthorized(response, 'Your session expired. Please sign in again.')) {
+                return;
+              }
               alert('Failed to delete image');
             }
           }
@@ -1503,6 +1554,9 @@ class Image {
             if (response.ok) {
               location.reload();
             } else {
+              if (await redirectIfUnauthorized(response, 'Your session expired. Please sign in again.')) {
+                return;
+              }
               alert('Failed to delete image group');
             }
           }
