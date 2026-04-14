@@ -28,7 +28,7 @@ class Image {
       const escapedFileName = escapeHtml(file.name);
       const escapedFileUrl = escapeHtml(fileUrl);
       imagesHtml += `
-        <figure class="image-card" data-page-item="true" data-image-name="${escapeHtml(file.name.toLowerCase())}">
+        <figure class="image-card" data-page-item="true" data-image-name="${escapeHtml(file.name.toLowerCase())}" data-uploaded-at="${Math.trunc(file.uploadedAtMs)}" data-file-size="${file.sizeBytes}">
           <div class="image-wrapper" data-image-url="${escapedFileUrl}" data-image-name="${escapedFileName}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
             <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(file.name)})" title="Click to enlarge">
             <div class="image-overlay">
@@ -203,6 +203,15 @@ class Image {
             font-weight: 600;
           }
 
+          .sort-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #4b5563;
+            font-weight: 600;
+          }
+
           .page-size-input {
             width: 64px;
             border: 1px solid #d1d5db;
@@ -213,7 +222,23 @@ class Image {
             background: #fff;
           }
 
+          .sort-select {
+            min-width: 130px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            color: #1f2937;
+            background: #fff;
+          }
+
           .page-size-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+          }
+
+          .sort-select:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
@@ -580,6 +605,15 @@ class Image {
             </div>
             <input id="gallery-search-input" class="gallery-search" type="search" placeholder="Search by image name..." aria-label="Search images by file name">
             <button id="gallery-search-clear" class="clear-search-btn" type="button">Clear</button>
+            <label class="sort-control" for="gallery-sort-select">
+              Sort
+              <select id="gallery-sort-select" class="sort-select" aria-label="Sort images">
+                <option value="newest" selected>Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="name">Name</option>
+                <option value="size">Size</option>
+              </select>
+            </label>
             <label class="page-size-control" for="gallery-page-size">
               Per page
               <input id="gallery-page-size" class="page-size-input" type="number" min="3" max="30" step="1" value="15" aria-label="Items per page">
@@ -632,6 +666,8 @@ class Image {
           let currentPage = 1;
           let totalPages = 1;
           let currentFilterQuery = '';
+          let currentSort = 'newest';
+          let currentSort = 'newest';
           let currentGroupImages = [];
           let currentGroupIndex = 0;
           
@@ -642,6 +678,46 @@ class Image {
 
           function getGalleryItems() {
             return Array.from(document.querySelectorAll('[data-page-item="true"]'));
+          }
+
+          function compareItems(a, b) {
+            const aUploaded = Number.parseInt(a.dataset.uploadedAt || '0', 10);
+            const bUploaded = Number.parseInt(b.dataset.uploadedAt || '0', 10);
+            const aSize = Number.parseInt(a.dataset.totalSize || '0', 10);
+            const bSize = Number.parseInt(b.dataset.totalSize || '0', 10);
+            const aName = String(a.dataset.groupName || '').toLowerCase();
+            const bName = String(b.dataset.groupName || '').toLowerCase();
+
+            if (currentSort === 'oldest') {
+              return aUploaded - bUploaded;
+            }
+            if (currentSort === 'name') {
+              return aName.localeCompare(bName);
+            }
+            if (currentSort === 'size') {
+              return bSize - aSize;
+            }
+            return bUploaded - aUploaded;
+          }
+
+          function compareItems(a, b) {
+            const aUploaded = Number.parseInt(a.dataset.uploadedAt || '0', 10);
+            const bUploaded = Number.parseInt(b.dataset.uploadedAt || '0', 10);
+            const aSize = Number.parseInt(a.dataset.fileSize || '0', 10);
+            const bSize = Number.parseInt(b.dataset.fileSize || '0', 10);
+            const aName = String(a.dataset.imageName || '').toLowerCase();
+            const bName = String(b.dataset.imageName || '').toLowerCase();
+
+            if (currentSort === 'oldest') {
+              return aUploaded - bUploaded;
+            }
+            if (currentSort === 'name') {
+              return aName.localeCompare(bName);
+            }
+            if (currentSort === 'size') {
+              return bSize - aSize;
+            }
+            return bUploaded - aUploaded;
           }
 
           function renderPagination() {
@@ -662,6 +738,16 @@ class Image {
 
             if (!paginationContainer || !meta || !prevBtn || !nextBtn) {
               return;
+            }
+
+            const galleryContainer = document.getElementById('gallery-container');
+            if (galleryContainer) {
+              items.sort(compareItems).forEach(item => galleryContainer.appendChild(item));
+            }
+
+            const galleryContainer = document.getElementById('gallery-container');
+            if (galleryContainer) {
+              items.sort(compareItems).forEach(item => galleryContainer.appendChild(item));
             }
 
             if (!items.length) {
@@ -718,6 +804,16 @@ class Image {
               return DEFAULT_PAGE_SIZE;
             }
             return Math.max(MIN_PAGE_SIZE, Math.min(MAX_PAGE_SIZE, parsed));
+          }
+
+          function normalizeSort(value) {
+            const normalized = String(value || '').toLowerCase();
+            return ['newest', 'oldest', 'name', 'size'].includes(normalized) ? normalized : 'newest';
+          }
+
+          function normalizeSort(value) {
+            const normalized = String(value || '').toLowerCase();
+            return ['newest', 'oldest', 'name', 'size'].includes(normalized) ? normalized : 'newest';
           }
 
           function openLightboxFromCard(card) {
@@ -886,6 +982,7 @@ class Image {
 
           const searchInput = document.getElementById('gallery-search-input');
           const clearSearchButton = document.getElementById('gallery-search-clear');
+          const sortSelect = document.getElementById('gallery-sort-select');
           const pageSizeInput = document.getElementById('gallery-page-size');
           if (searchInput) {
             searchInput.addEventListener('input', event => {
@@ -899,6 +996,17 @@ class Image {
               }
               applyImageSearch('');
             });
+          }
+
+          if (sortSelect) {
+            sortSelect.addEventListener('change', event => {
+              currentSort = normalizeSort(event.target.value);
+              sortSelect.value = currentSort;
+              currentPage = 1;
+              renderPagination();
+            });
+            currentSort = normalizeSort(sortSelect.value);
+            sortSelect.value = currentSort;
           }
 
           if (pageSizeInput) {
@@ -956,7 +1064,7 @@ class Image {
       const encodedGroupImageSet = escapeHtml(JSON.stringify(groupImageSet));
 
       groupsHtml += `
-        <div class="image-group-card" data-page-item="true" data-group-name="${escapeHtml(group.originalName)}" data-group-link="${escapeHtml(shareLink)}" ondblclick="openGroupFromCard(event, this)">
+        <div class="image-group-card" data-page-item="true" data-group-name="${escapeHtml(group.originalName)}" data-group-link="${escapeHtml(shareLink)}" data-uploaded-at="${Math.trunc(group.uploadedAtMs)}" data-total-size="${group.totalSize}" ondblclick="openGroupFromCard(event, this)">
           <div class="group-preview-grid">
             <div class="image-wrapper" data-image-url="${escapeHtml(fileUrl)}" data-image-name="${escapedFileName}" data-group-images="${encodedGroupImageSet}" data-group-index="0" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
               <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(group.original.name)})" title="Original image">
@@ -1150,6 +1258,15 @@ class Image {
             font-weight: 600;
           }
 
+          .sort-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #4b5563;
+            font-weight: 600;
+          }
+
           .page-size-input {
             width: 64px;
             border: 1px solid #d1d5db;
@@ -1160,7 +1277,23 @@ class Image {
             background: #fff;
           }
 
+          .sort-select {
+            min-width: 130px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            color: #1f2937;
+            background: #fff;
+          }
+
           .page-size-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+          }
+
+          .sort-select:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
@@ -1633,6 +1766,15 @@ class Image {
             </div>
             <input id="gallery-search-input" class="gallery-search" type="search" placeholder="Search by image name..." aria-label="Search groups by image name">
             <button id="gallery-search-clear" class="clear-search-btn" type="button">Clear</button>
+            <label class="sort-control" for="gallery-sort-select">
+              Sort
+              <select id="gallery-sort-select" class="sort-select" aria-label="Sort groups">
+                <option value="newest" selected>Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="name">Name</option>
+                <option value="size">Size</option>
+              </select>
+            </label>
             <label class="page-size-control" for="gallery-page-size">
               Per page
               <input id="gallery-page-size" class="page-size-input" type="number" min="3" max="30" step="1" value="15" aria-label="Items per page">
@@ -2045,6 +2187,7 @@ class Image {
 
           const searchInput = document.getElementById('gallery-search-input');
           const clearSearchButton = document.getElementById('gallery-search-clear');
+          const sortSelect = document.getElementById('gallery-sort-select');
           const pageSizeInput = document.getElementById('gallery-page-size');
           if (searchInput) {
             searchInput.addEventListener('input', event => {
@@ -2058,6 +2201,17 @@ class Image {
               }
               applyGroupSearch('');
             });
+          }
+
+          if (sortSelect) {
+            sortSelect.addEventListener('change', event => {
+              currentSort = normalizeSort(event.target.value);
+              sortSelect.value = currentSort;
+              currentPage = 1;
+              renderPagination();
+            });
+            currentSort = normalizeSort(sortSelect.value);
+            sortSelect.value = currentSort;
           }
 
           if (pageSizeInput) {
