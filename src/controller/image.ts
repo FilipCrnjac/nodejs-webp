@@ -701,19 +701,23 @@ class Image {
             </div>
             <div class="image-variants">${group.variants.length} variant${group.variants.length !== 1 ? 's' : ''}</div>
             <div class="group-actions">
-              <a href="${shareLink}" class="group-action-btn view-group-btn" title="Open this group details page">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="vertical-align:-1px;margin-right:4px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>View group
+              <a href="${shareLink}" class="group-action-btn view-group-btn" title="Open this group details page" data-label="View group" aria-label="View group">
+                <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="action-label">View group</span>
               </a>
               <div class="group-actions-secondary">
-                <button class="group-action-btn copy-link-btn" data-share-link="${escapeHtml(shareLink)}" onclick="copyGroupLink(this, event)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="vertical-align:-1px;margin-right:4px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy link
+                <button class="group-action-btn copy-link-btn" data-share-link="${escapeHtml(shareLink)}" onclick="copyGroupLink(this, event)" data-label="Copy link" aria-label="Copy link">
+                  <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  <span class="action-label">Copy link</span>
                 </button>
-                <a href="${downloadGroupLink}" class="group-action-btn zip-btn" title="Download original and variants as ZIP">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="vertical-align:-1px;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>ZIP
+                <a href="${downloadGroupLink}" class="group-action-btn zip-btn" title="Download original and variants as ZIP" data-label="ZIP" aria-label="ZIP">
+                  <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span class="action-label">ZIP</span>
                 </a>
               </div>
-              <button class="group-action-btn delete-group-btn" data-group-id="${escapeHtml(group.originalName)}" onclick="deleteGroupFromButton(this, event)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="vertical-align:-1px;margin-right:4px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Delete
+              <button class="group-action-btn delete-group-btn" data-group-id="${escapeHtml(group.originalName)}" onclick="deleteGroupFromButton(this, event)" data-label="Delete" aria-label="Delete">
+                <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                <span class="action-label">Delete</span>
               </button>
             </div>
           </div>
@@ -1136,13 +1140,69 @@ class Image {
 
           .group-action-btn {
             border: none;
-            border-radius: 4px;
-            padding: 6px 8px;
+            border-radius: 6px;
+            padding: 8px;
             font-size: 11px;
             font-weight: 600;
             text-decoration: none;
             cursor: pointer;
+            line-height: 1.1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+            position: relative;
+            min-height: 34px;
+            min-width: 34px;
+          }
+
+          .group-action-btn:hover {
+            transform: translateY(-1px);
+          }
+
+          .action-icon {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+          }
+
+          .action-label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+          }
+
+          .group-action-btn::after {
+            content: attr(data-label);
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% + 6px);
+            transform: translate(-50%, 4px);
+            background: #111827;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 600;
             line-height: 1;
+            padding: 5px 7px;
+            border-radius: 5px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.16s ease, transform 0.16s ease;
+            z-index: 3;
+          }
+
+          .group-action-btn:hover::after,
+          .group-action-btn:focus-visible::after {
+            opacity: 1;
+            transform: translate(-50%, 0);
           }
 
           .view-group-btn {
@@ -1150,27 +1210,48 @@ class Image {
             color: #fff;
             grid-column: 1 / -1;
             text-align: center;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.28);
           }
 
-          .copy-link-btn,
+          .group-actions-secondary .group-action-btn {
+            flex: 1;
+            min-height: 36px;
+          }
+
+          .copy-link-btn {
+            background: #e0ecff;
+            color: #1f3b8f;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.22);
+          }
+
+          .copy-link-btn:hover {
+            background: #cfe2ff;
+          }
+
           .zip-btn {
-            background: #eef0f9;
-            color: #2f3a5f;
+            background: #e8fff0;
+            color: #166534;
+            box-shadow: 0 2px 8px rgba(22, 163, 74, 0.2);
           }
 
-          .copy-link-btn:hover,
           .zip-btn:hover {
-            background: #e2e7fb;
+            background: #d6fbe6;
           }
 
           .delete-group-btn {
             background: #d32f2f;
             color: #fff;
             width: 100%;
+            box-shadow: 0 2px 8px rgba(211, 47, 47, 0.28);
           }
 
           .delete-group-btn:hover {
             background: #b71c1c;
+          }
+
+          .group-action-btn:focus-visible {
+            outline: 2px solid #1d4ed8;
+            outline-offset: 1px;
           }
 
           @media (max-width: 768px) {
