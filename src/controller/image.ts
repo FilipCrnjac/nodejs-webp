@@ -669,6 +669,28 @@ class Image {
           <span id="lightbox-filename" style="display:none;"></span>
         </div>
 
+        <div id="gallery-toast" style="position:fixed;right:16px;bottom:16px;z-index:10000;display:none;padding:10px 12px;border-radius:8px;color:#fff;font-size:13px;box-shadow:0 8px 20px rgba(0,0,0,.25);"></div>
+        <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;align-items:center;justify-content:center;padding:16px;">
+          <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+            <div id="confirm-modal-message" style="font-size:14px;color:#222;line-height:1.5;margin-bottom:14px;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+              <button id="confirm-modal-cancel" class="lightbox-btn close-btn" type="button">Cancel</button>
+              <button id="confirm-modal-ok" class="lightbox-btn delete-btn" type="button">Delete</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="gallery-toast" style="position:fixed;right:16px;bottom:16px;z-index:10000;display:none;padding:10px 12px;border-radius:8px;color:#fff;font-size:13px;box-shadow:0 8px 20px rgba(0,0,0,.25);"></div>
+        <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;align-items:center;justify-content:center;padding:16px;">
+          <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+            <div id="confirm-modal-message" style="font-size:14px;color:#222;line-height:1.5;margin-bottom:14px;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+              <button id="confirm-modal-cancel" class="lightbox-btn close-btn" type="button">Cancel</button>
+              <button id="confirm-modal-ok" class="lightbox-btn delete-btn" type="button">Delete</button>
+            </div>
+          </div>
+        </div>
+
         <script>
           const startTime = new Date().getTime();
           const MIN_PAGE_SIZE = 3;
@@ -938,9 +960,47 @@ class Image {
             window.location.replace(target);
           }
 
+          function showToast(message, type) {
+            const toast = document.getElementById('gallery-toast');
+            if (!toast) return;
+            const kind = type || 'info';
+            toast.style.background = kind === 'success' ? '#2e7d32' : kind === 'error' ? '#c62828' : '#546e7a';
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+              toast.style.display = 'none';
+            }, 2200);
+          }
+
+          function openConfirmModal(message) {
+            return new Promise(resolve => {
+              const modal = document.getElementById('confirm-modal');
+              const msg = document.getElementById('confirm-modal-message');
+              const ok = document.getElementById('confirm-modal-ok');
+              const cancel = document.getElementById('confirm-modal-cancel');
+              if (!modal || !msg || !ok || !cancel) {
+                resolve(false);
+                return;
+              }
+              msg.textContent = message;
+              modal.style.display = 'flex';
+
+              const cleanup = (result) => {
+                modal.style.display = 'none';
+                ok.onclick = null;
+                cancel.onclick = null;
+                resolve(result);
+              };
+
+              ok.onclick = () => cleanup(true);
+              cancel.onclick = () => cleanup(false);
+            });
+          }
+
           async function deleteImage() {
             const name = document.getElementById('lightbox-filename').textContent;
-            if (!confirm('Delete ' + name + ' and its WebP variants?')) return;
+            const confirmed = await openConfirmModal('Delete ' + name + ' and its WebP variants?');
+            if (!confirmed) return;
             const encoded = encodeURIComponent(name);
             const token = localStorage.getItem('access_token') || '';
             const response = await fetch('/images/${folderId}/files/' + encoded, {
@@ -948,14 +1008,14 @@ class Image {
               headers: token ? { Authorization: 'Bearer ' + token } : {}
             });
             if (response.ok) {
-              alert('Image deleted successfully');
+              showToast('Image deleted successfully', 'success');
               location.reload();
             } else {
               if (response.status === 401) {
                 redirectToLoginWithMessage(getUnauthorizedMessage(await response.text()));
                 return;
               }
-              alert('Failed to delete image');
+              showToast('Failed to delete image', 'error');
             }
           }
 
@@ -2102,9 +2162,47 @@ class Image {
             return true;
           }
 
+          function showToast(message, type) {
+            const toast = document.getElementById('gallery-toast');
+            if (!toast) return;
+            const kind = type || 'info';
+            toast.style.background = kind === 'success' ? '#2e7d32' : kind === 'error' ? '#c62828' : '#546e7a';
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+              toast.style.display = 'none';
+            }, 2200);
+          }
+
+          function openConfirmModal(message) {
+            return new Promise(resolve => {
+              const modal = document.getElementById('confirm-modal');
+              const msg = document.getElementById('confirm-modal-message');
+              const ok = document.getElementById('confirm-modal-ok');
+              const cancel = document.getElementById('confirm-modal-cancel');
+              if (!modal || !msg || !ok || !cancel) {
+                resolve(false);
+                return;
+              }
+              msg.textContent = message;
+              modal.style.display = 'flex';
+
+              const cleanup = (result) => {
+                modal.style.display = 'none';
+                ok.onclick = null;
+                cancel.onclick = null;
+                resolve(result);
+              };
+
+              ok.onclick = () => cleanup(true);
+              cancel.onclick = () => cleanup(false);
+            });
+          }
+
           async function deleteImage() {
             const name = document.getElementById('lightbox-filename').textContent;
-            if (!confirm('Delete ' + name + ' and its WebP variants?')) return;
+            const confirmed = await openConfirmModal('Delete ' + name + ' and its WebP variants?');
+            if (!confirmed) return;
             const encoded = encodeURIComponent(name);
             const token = localStorage.getItem('access_token') || '';
             const response = await fetch('/images/${folderId}/files/' + encoded, {
@@ -2112,13 +2210,13 @@ class Image {
               headers: token ? { Authorization: 'Bearer ' + token } : {}
             });
             if (response.ok) {
-              alert('Image deleted successfully');
+              showToast('Image deleted successfully', 'success');
               location.reload();
             } else {
               if (await redirectIfUnauthorized(response, 'Your session expired. Please sign in again.')) {
                 return;
               }
-              alert('Failed to delete image');
+              showToast('Failed to delete image', 'error');
             }
           }
 
@@ -2133,7 +2231,7 @@ class Image {
               return;
             }
 
-            const confirmed = confirm('Delete this whole group (original + WebP variants)?');
+            const confirmed = await openConfirmModal('Delete this whole group (original + WebP variants)?');
             if (!confirmed) {
               return;
             }
@@ -2150,7 +2248,7 @@ class Image {
               if (await redirectIfUnauthorized(response, 'Your session expired. Please sign in again.')) {
                 return;
               }
-              alert('Failed to delete image group');
+              showToast('Failed to delete image group', 'error');
             }
           }
 
@@ -2178,9 +2276,9 @@ class Image {
                 document.execCommand('copy');
                 document.body.removeChild(tmp);
               }
-              alert('Group link copied.');
+              showToast('Group link copied.', 'success');
             } catch {
-              alert('Failed to copy link.');
+              showToast('Failed to copy link.', 'error');
             }
           }
 
