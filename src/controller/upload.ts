@@ -431,9 +431,9 @@ class Upload {
                     <div style="margin-bottom: 12px;">
                       <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
                         <span>Quality Level</span>
-                        <span id="lossyQualityValue" style="font-weight: 600; color: #667eea;">75</span>
+                        <input id="lossyQualityNumber" type="number" min="1" max="100" value="75" style="width: 78px; padding: 5px 8px; border: 1px solid #cfd8ff; border-radius: 6px; font-weight: 700; color: #667eea; font-size: 14px; text-align: center;">
                       </label>
-                      <input type="range" id="lossyQuality" min="1" max="100" value="75" style="width: 100%; cursor: pointer;">
+                      <input type="range" id="lossyQuality" min="1" max="100" value="75" style="width: 100%; cursor: pointer; height: 24px;">
                     </div>
                     <div style="background: white; padding: 8px; border-radius: 4px; font-size: 11px; color: #666;">
                       <div>Better compression</div>
@@ -447,9 +447,9 @@ class Upload {
                     <div style="margin-bottom: 12px;">
                       <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
                         <span>Quality Level</span>
-                        <span id="losslessQualityValue" style="font-weight: 600; color: #4caf50;">75</span>
+                        <input id="losslessQualityNumber" type="number" min="1" max="100" value="75" style="width: 78px; padding: 5px 8px; border: 1px solid #cfe8d3; border-radius: 6px; font-weight: 700; color: #4caf50; font-size: 14px; text-align: center;">
                       </label>
-                      <input type="range" id="losslessQuality" min="1" max="100" value="75" style="width: 100%; cursor: pointer;">
+                      <input type="range" id="losslessQuality" min="1" max="100" value="75" style="width: 100%; cursor: pointer; height: 24px;">
                     </div>
                     <div style="background: white; padding: 8px; border-radius: 4px; font-size: 11px; color: #666;">
                       <div>Perfect quality</div>
@@ -519,8 +519,8 @@ class Upload {
           const qualitySection = document.getElementById('qualitySection');
           const lossyQuality = document.getElementById('lossyQuality');
           const losslessQuality = document.getElementById('losslessQuality');
-          const lossyQualityValue = document.getElementById('lossyQualityValue');
-          const losslessQualityValue = document.getElementById('losslessQualityValue');
+          const lossyQualityNumber = document.getElementById('lossyQualityNumber');
+          const losslessQualityNumber = document.getElementById('losslessQualityNumber');
           const savingsPreview = document.getElementById('savingsPreview');
           const quotaBox = document.getElementById('quotaBox');
           const quotaText = document.getElementById('quotaText');
@@ -531,16 +531,34 @@ class Upload {
 
           loadQuotaUsage();
 
-          // Quality slider events
-          lossyQuality.addEventListener('input', (e) => {
-            lossyQualityValue.textContent = e.target.value;
-            updateSavingsEstimate();
-          });
+          function normalizeQuality(value) {
+            const parsed = parseInt(String(value || ''), 10);
+            if (!Number.isFinite(parsed)) {
+              return 75;
+            }
+            return Math.max(1, Math.min(100, parsed));
+          }
 
-          losslessQuality.addEventListener('input', (e) => {
-            losslessQualityValue.textContent = e.target.value;
-            updateSavingsEstimate();
-          });
+          function syncQualityPair(slider, numberInput) {
+            if (!slider || !numberInput) {
+              return;
+            }
+
+            const apply = (value) => {
+              const normalized = normalizeQuality(value);
+              slider.value = String(normalized);
+              numberInput.value = String(normalized);
+              updateSavingsEstimate();
+            };
+
+            slider.addEventListener('input', (e) => apply(e.target.value));
+            numberInput.addEventListener('input', (e) => apply(e.target.value));
+            numberInput.addEventListener('change', (e) => apply(e.target.value));
+            apply(slider.value);
+          }
+
+          syncQualityPair(lossyQuality, lossyQualityNumber);
+          syncQualityPair(losslessQuality, losslessQualityNumber);
 
           // Drag and drop
           fileLabel.addEventListener('dragover', (e) => {
@@ -638,8 +656,8 @@ class Upload {
             }
 
             // Get quality settings
-            const lossyQualityValue = parseInt(lossyQuality.value, 10);
-            const losslessQualityValue = parseInt(losslessQuality.value, 10);
+            const selectedLossyQuality = parseInt(lossyQuality.value, 10);
+            const selectedLosslessQuality = parseInt(losslessQuality.value, 10);
 
             // Start upload
             progressSection.classList.add('show');
@@ -648,8 +666,8 @@ class Upload {
 
             const formData = new FormData();
             formData.append('myImage', file);
-            formData.append('lossyQuality', String(lossyQualityValue));
-            formData.append('losslessQuality', String(losslessQualityValue));
+            formData.append('lossyQuality', String(selectedLossyQuality));
+            formData.append('losslessQuality', String(selectedLosslessQuality));
 
             const token = localStorage.getItem('access_token') || '';
             const headers = {};
