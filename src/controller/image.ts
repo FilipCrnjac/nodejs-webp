@@ -20,9 +20,10 @@ class Image {
      `;
   }
 
-  getDirectoryHtml(folderId: number): string {
+  getDirectoryHtml(folderId: number, query: { page?: number; pageSize?: number; q?: string; sort?: string } = {}): string {
+    const pagedFiles = imageService.getPagedDirectoryFilesWithSize(folderId, query as any);
     let imagesHtml = '';
-    imageService.getDirectoryFilesWithSize(folderId).forEach(file => {
+    pagedFiles.items.forEach(file => {
       const safeFile = encodeURIComponent(file.name);
       const fileUrl = `/images/${folderId}/files/${safeFile}`;
       const escapedFileName = escapeHtml(file.name);
@@ -281,6 +282,10 @@ class Image {
             transition: all 0.2s ease;
             background: #eef0f9;
             color: #374151;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
           }
 
           .pagination-btn:hover:not(:disabled) {
@@ -290,6 +295,11 @@ class Image {
           .pagination-btn:disabled {
             opacity: 0.45;
             cursor: not-allowed;
+          }
+
+          .pagination-btn[aria-disabled="true"] {
+            opacity: 0.45;
+            pointer-events: none;
           }
 
           .gallery.empty {
@@ -598,27 +608,29 @@ class Image {
             <a href="/" class="back-link">← Back to App</a>
           </div>
 
-          <div class="gallery-toolbar">
+          <form id="gallery-filters-form" class="gallery-toolbar" method="GET" action="/images/${folderId}/html">
             <div class="view-toggle" role="tablist" aria-label="Gallery view mode">
               <a href="/images/${folderId}/html" class="view-toggle-link active" role="tab" aria-selected="true">All Images</a>
               <a href="/images/${folderId}/grouped/html" class="view-toggle-link" role="tab" aria-selected="false">Grouped</a>
             </div>
-            <input id="gallery-search-input" class="gallery-search" type="search" placeholder="Search by image name..." aria-label="Search images by file name">
+            <input id="gallery-search-input" class="gallery-search" name="q" type="search" value="${escapeHtml(pagedFiles.q)}" placeholder="Search by image name..." aria-label="Search images by file name">
+            <input id="gallery-page" type="hidden" name="page" value="1">
             <button id="gallery-search-clear" class="clear-search-btn" type="button">Clear</button>
             <label class="sort-control" for="gallery-sort-select">
               Sort
-              <select id="gallery-sort-select" class="sort-select" aria-label="Sort images">
-                <option value="newest" selected>Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="name">Name</option>
-                <option value="size">Size</option>
+              <select id="gallery-sort-select" name="sort" class="sort-select" aria-label="Sort images">
+                <option value="newest" ${pagedFiles.sort === 'newest' ? 'selected' : ''}>Newest</option>
+                <option value="oldest" ${pagedFiles.sort === 'oldest' ? 'selected' : ''}>Oldest</option>
+                <option value="name" ${pagedFiles.sort === 'name' ? 'selected' : ''}>Name</option>
+                <option value="size" ${pagedFiles.sort === 'size' ? 'selected' : ''}>Size</option>
               </select>
             </label>
             <label class="page-size-control" for="gallery-page-size">
               Per page
-              <input id="gallery-page-size" class="page-size-input" type="number" min="3" max="30" step="1" value="15" aria-label="Items per page">
+              <input id="gallery-page-size" class="page-size-input" name="pageSize" type="number" min="3" max="30" step="1" value="${pagedFiles.pageSize}" aria-label="Items per page">
             </label>
-          </div>
+            <button class="clear-search-btn" type="submit">Apply</button>
+          </form>
 
           <div id="gallery-container" class="gallery${imagesHtml.trim() === '' ? ' empty' : ''}">
             ${imagesHtml.trim() === '' ? `
@@ -634,11 +646,11 @@ class Image {
               </div>
             ` : imagesHtml}
           </div>
-          <div id="gallery-pagination" class="pagination hidden">
-            <div id="gallery-pagination-meta" class="pagination-meta"></div>
+          <div id="gallery-pagination" class="pagination${pagedFiles.totalPages <= 1 ? ' hidden' : ''}">
+            <div id="gallery-pagination-meta" class="pagination-meta">Page ${pagedFiles.page} of ${pagedFiles.totalPages} (${pagedFiles.total} matching images)</div>
             <div class="pagination-actions">
-              <button id="gallery-prev-btn" class="pagination-btn" type="button">Previous</button>
-              <button id="gallery-next-btn" class="pagination-btn" type="button">Next</button>
+              <a id="gallery-prev-btn" class="pagination-btn" ${pagedFiles.page > 1 ? `href="/images/${folderId}/html?${buildGalleryQuery({ page: pagedFiles.page - 1, pageSize: pagedFiles.pageSize, q: pagedFiles.q, sort: pagedFiles.sort })}"` : 'aria-disabled="true"'}>Previous</a>
+              <a id="gallery-next-btn" class="pagination-btn" ${pagedFiles.page < pagedFiles.totalPages ? `href="/images/${folderId}/html?${buildGalleryQuery({ page: pagedFiles.page + 1, pageSize: pagedFiles.pageSize, q: pagedFiles.q, sort: pagedFiles.sort })}"` : 'aria-disabled="true"'}>Next</a>
             </div>
           </div>
         </div>
@@ -971,56 +983,44 @@ class Image {
             }
           }, { passive: false });
 
-          const prevBtn = document.getElementById('gallery-prev-btn');
-          const nextBtn = document.getElementById('gallery-next-btn');
-          if (prevBtn) {
-            prevBtn.addEventListener('click', () => changePage(currentPage - 1));
-          }
-          if (nextBtn) {
-            nextBtn.addEventListener('click', () => changePage(currentPage + 1));
-          }
-
+          const serverPaginationMode = true;
+          const filtersForm = document.getElementById('gallery-filters-form');
           const searchInput = document.getElementById('gallery-search-input');
           const clearSearchButton = document.getElementById('gallery-search-clear');
           const sortSelect = document.getElementById('gallery-sort-select');
           const pageSizeInput = document.getElementById('gallery-page-size');
-          if (searchInput) {
-            searchInput.addEventListener('input', event => {
-              applyImageSearch(event.target.value || '');
-            });
-          }
-          if (clearSearchButton) {
-            clearSearchButton.addEventListener('click', () => {
-              if (searchInput) {
-                searchInput.value = '';
+          const pageInput = document.getElementById('gallery-page');
+
+          if (!serverPaginationMode) {
+            renderPagination();
+          } else {
+            const submitFilters = () => {
+              if (pageInput) {
+                pageInput.value = '1';
               }
-              applyImageSearch('');
-            });
-          }
+              filtersForm?.submit();
+            };
 
-          if (sortSelect) {
-            sortSelect.addEventListener('change', event => {
-              currentSort = normalizeSort(event.target.value);
-              sortSelect.value = currentSort;
-              currentPage = 1;
-              renderPagination();
-            });
-            currentSort = normalizeSort(sortSelect.value);
-            sortSelect.value = currentSort;
-          }
+            if (clearSearchButton) {
+              clearSearchButton.addEventListener('click', () => {
+                if (searchInput) {
+                  searchInput.value = '';
+                }
+                submitFilters();
+              });
+            }
 
-          if (pageSizeInput) {
-            pageSizeInput.addEventListener('change', event => {
-              pageSize = normalizePageSize(event.target.value);
-              pageSizeInput.value = String(pageSize);
-              currentPage = 1;
-              renderPagination();
-            });
-            pageSize = normalizePageSize(pageSizeInput.value);
-            pageSizeInput.value = String(pageSize);
-          }
+            if (sortSelect) {
+              sortSelect.addEventListener('change', submitFilters);
+            }
 
-          renderPagination();
+            if (pageSizeInput) {
+              pageSizeInput.addEventListener('change', () => {
+                pageSizeInput.value = String(normalizePageSize(pageSizeInput.value));
+                submitFilters();
+              });
+            }
+          }
         </script>
       </body>
       </html>`;
@@ -1032,8 +1032,9 @@ class Image {
     };
   }
 
-  getGroupedGalleryHtml(folderId: number): string {
-    const groups = imageService.getImageGroups(folderId);
+  getGroupedGalleryHtml(folderId: number, query: { page?: number; pageSize?: number; q?: string; sort?: string } = {}): string {
+    const groupsPage = imageService.getPagedImageGroups(folderId, query as any);
+    const groups = groupsPage.items;
     let groupsHtml = '';
 
     groups.forEach(group => {
@@ -1364,6 +1365,10 @@ class Image {
             transition: all 0.2s ease;
             background: #eef0f9;
             color: #374151;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
           }
 
           .pagination-btn:hover:not(:disabled) {
@@ -1373,6 +1378,11 @@ class Image {
           .pagination-btn:disabled {
             opacity: 0.45;
             cursor: not-allowed;
+          }
+
+          .pagination-btn[aria-disabled="true"] {
+            opacity: 0.45;
+            pointer-events: none;
           }
 
           .gallery.empty {
@@ -1759,36 +1769,38 @@ class Image {
             <a href="/" class="back-link">← Back to App</a>
           </div>
 
-          <div class="gallery-toolbar">
+          <form id="gallery-filters-form" class="gallery-toolbar" method="GET" action="/images/${folderId}/grouped/html">
             <div class="view-toggle" role="tablist" aria-label="Gallery view mode">
               <a href="/images/${folderId}/html" class="view-toggle-link" role="tab" aria-selected="false">All Images</a>
               <a href="/images/${folderId}/grouped/html" class="view-toggle-link active" role="tab" aria-selected="true">Grouped</a>
             </div>
-            <input id="gallery-search-input" class="gallery-search" type="search" placeholder="Search by image name..." aria-label="Search groups by image name">
+            <input id="gallery-search-input" class="gallery-search" name="q" type="search" value="${escapeHtml(groupsPage.q)}" placeholder="Search by image name..." aria-label="Search groups by image name">
+            <input id="gallery-page" type="hidden" name="page" value="1">
             <button id="gallery-search-clear" class="clear-search-btn" type="button">Clear</button>
             <label class="sort-control" for="gallery-sort-select">
               Sort
-              <select id="gallery-sort-select" class="sort-select" aria-label="Sort groups">
-                <option value="newest" selected>Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="name">Name</option>
-                <option value="size">Size</option>
+              <select id="gallery-sort-select" name="sort" class="sort-select" aria-label="Sort groups">
+                <option value="newest" ${groupsPage.sort === 'newest' ? 'selected' : ''}>Newest</option>
+                <option value="oldest" ${groupsPage.sort === 'oldest' ? 'selected' : ''}>Oldest</option>
+                <option value="name" ${groupsPage.sort === 'name' ? 'selected' : ''}>Name</option>
+                <option value="size" ${groupsPage.sort === 'size' ? 'selected' : ''}>Size</option>
               </select>
             </label>
             <label class="page-size-control" for="gallery-page-size">
               Per page
-              <input id="gallery-page-size" class="page-size-input" type="number" min="3" max="30" step="1" value="15" aria-label="Items per page">
+              <input id="gallery-page-size" class="page-size-input" name="pageSize" type="number" min="3" max="30" step="1" value="${groupsPage.pageSize}" aria-label="Items per page">
             </label>
-          </div>
+            <button class="clear-search-btn" type="submit">Apply</button>
+          </form>
 
           <div id="gallery-container" class="gallery${groups.length === 0 ? ' empty' : ''}">
             ${emptyState}
           </div>
-          <div id="gallery-pagination" class="pagination hidden">
-            <div id="gallery-pagination-meta" class="pagination-meta"></div>
+          <div id="gallery-pagination" class="pagination${groupsPage.totalPages <= 1 ? ' hidden' : ''}">
+            <div id="gallery-pagination-meta" class="pagination-meta">Page ${groupsPage.page} of ${groupsPage.totalPages} (${groupsPage.total} matching groups)</div>
             <div class="pagination-actions">
-              <button id="gallery-prev-btn" class="pagination-btn" type="button">Previous</button>
-              <button id="gallery-next-btn" class="pagination-btn" type="button">Next</button>
+              <a id="gallery-prev-btn" class="pagination-btn" ${groupsPage.page > 1 ? `href="/images/${folderId}/grouped/html?${buildGalleryQuery({ page: groupsPage.page - 1, pageSize: groupsPage.pageSize, q: groupsPage.q, sort: groupsPage.sort })}"` : 'aria-disabled="true"'}>Previous</a>
+              <a id="gallery-next-btn" class="pagination-btn" ${groupsPage.page < groupsPage.totalPages ? `href="/images/${folderId}/grouped/html?${buildGalleryQuery({ page: groupsPage.page + 1, pageSize: groupsPage.pageSize, q: groupsPage.q, sort: groupsPage.sort })}"` : 'aria-disabled="true"'}>Next</a>
             </div>
           </div>
         </div>
@@ -2176,56 +2188,44 @@ class Image {
             if (e.key === 'Escape') closeLightbox();
           });
 
-          const prevBtn = document.getElementById('gallery-prev-btn');
-          const nextBtn = document.getElementById('gallery-next-btn');
-          if (prevBtn) {
-            prevBtn.addEventListener('click', () => changePage(currentPage - 1));
-          }
-          if (nextBtn) {
-            nextBtn.addEventListener('click', () => changePage(currentPage + 1));
-          }
-
+          const serverPaginationMode = true;
+          const filtersForm = document.getElementById('gallery-filters-form');
           const searchInput = document.getElementById('gallery-search-input');
           const clearSearchButton = document.getElementById('gallery-search-clear');
           const sortSelect = document.getElementById('gallery-sort-select');
           const pageSizeInput = document.getElementById('gallery-page-size');
-          if (searchInput) {
-            searchInput.addEventListener('input', event => {
-              applyGroupSearch(event.target.value || '');
-            });
-          }
-          if (clearSearchButton) {
-            clearSearchButton.addEventListener('click', () => {
-              if (searchInput) {
-                searchInput.value = '';
+          const pageInput = document.getElementById('gallery-page');
+
+          if (!serverPaginationMode) {
+            renderPagination();
+          } else {
+            const submitFilters = () => {
+              if (pageInput) {
+                pageInput.value = '1';
               }
-              applyGroupSearch('');
-            });
-          }
+              filtersForm?.submit();
+            };
 
-          if (sortSelect) {
-            sortSelect.addEventListener('change', event => {
-              currentSort = normalizeSort(event.target.value);
-              sortSelect.value = currentSort;
-              currentPage = 1;
-              renderPagination();
-            });
-            currentSort = normalizeSort(sortSelect.value);
-            sortSelect.value = currentSort;
-          }
+            if (clearSearchButton) {
+              clearSearchButton.addEventListener('click', () => {
+                if (searchInput) {
+                  searchInput.value = '';
+                }
+                submitFilters();
+              });
+            }
 
-          if (pageSizeInput) {
-            pageSizeInput.addEventListener('change', event => {
-              pageSize = normalizePageSize(event.target.value);
-              pageSizeInput.value = String(pageSize);
-              currentPage = 1;
-              renderPagination();
-            });
-            pageSize = normalizePageSize(pageSizeInput.value);
-            pageSizeInput.value = String(pageSize);
-          }
+            if (sortSelect) {
+              sortSelect.addEventListener('change', submitFilters);
+            }
 
-          renderPagination();
+            if (pageSizeInput) {
+              pageSizeInput.addEventListener('change', () => {
+                pageSizeInput.value = String(normalizePageSize(pageSizeInput.value));
+                submitFilters();
+              });
+            }
+          }
         </script>
       </body>
       </html>`;
@@ -2714,6 +2714,17 @@ function isLossyVariantName(fileName: string): boolean {
 
 function isLosslessVariantName(fileName: string): boolean {
   return /lossless/i.test(fileName);
+}
+
+function buildGalleryQuery(state: { page: number; pageSize: number; q: string; sort: string }): string {
+  const params = new URLSearchParams();
+  params.set('page', String(state.page));
+  params.set('pageSize', String(state.pageSize));
+  params.set('sort', String(state.sort || 'newest'));
+  if (state.q) {
+    params.set('q', state.q);
+  }
+  return params.toString();
 }
 
 export = Image;

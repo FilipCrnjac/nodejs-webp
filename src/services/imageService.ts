@@ -16,6 +16,25 @@ type ImageGroup = {
   uploadedAtMs: number;
 };
 
+type GallerySort = 'newest' | 'oldest' | 'name' | 'size';
+
+type GalleryQuery = {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  sort?: GallerySort;
+};
+
+type PagedResult<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  q: string;
+  sort: GallerySort;
+};
+
 class ImageService {
   getDirectories(): string[] {
     return FileHelperSync.getDirectories(process.env.UPLOADS_FOLDER!);
@@ -75,6 +94,50 @@ class ImageService {
       .sort((a, b) => b.uploadedAtMs - a.uploadedAtMs);
   }
 
+  getPagedDirectoryFilesWithSize(folderId: number, query: GalleryQuery): PagedResult<FileWithSize> {
+    const normalized = normalizeGalleryQuery(query);
+    const filtered = this.getDirectoryFilesWithSize(folderId).filter(file =>
+      !normalized.q || file.name.toLowerCase().includes(normalized.q)
+    );
+
+    filtered.sort((a, b) => {
+      if (normalized.sort === 'oldest') {
+        return a.uploadedAtMs - b.uploadedAtMs;
+      }
+      if (normalized.sort === 'name') {
+        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      }
+      if (normalized.sort === 'size') {
+        return b.sizeBytes - a.sizeBytes;
+      }
+      return b.uploadedAtMs - a.uploadedAtMs;
+    });
+
+    return paginate(filtered, normalized);
+  }
+
+  getPagedImageGroups(folderId: number, query: GalleryQuery): PagedResult<ImageGroup> {
+    const normalized = normalizeGalleryQuery(query);
+    const filtered = this.getImageGroups(folderId).filter(group =>
+      !normalized.q || group.originalName.toLowerCase().includes(normalized.q)
+    );
+
+    filtered.sort((a, b) => {
+      if (normalized.sort === 'oldest') {
+        return a.uploadedAtMs - b.uploadedAtMs;
+      }
+      if (normalized.sort === 'name') {
+        return a.originalName.toLowerCase().localeCompare(b.originalName.toLowerCase());
+      }
+      if (normalized.sort === 'size') {
+        return b.totalSize - a.totalSize;
+      }
+      return b.uploadedAtMs - a.uploadedAtMs;
+    });
+
+    return paginate(filtered, normalized);
+  }
+
   private extractOriginalFileName(fileName: string): string {
     const parsed = path.parse(fileName);
     const variantPattern = /^(\d+)-(lossy|lossless)_(.+)$/;
@@ -89,4 +152,35 @@ class ImageService {
 }
 
 export = ImageService;
+
+function normalizeGalleryQuery(query: GalleryQuery): { page: number; pageSize: number; q: string; sort: GallerySort } {
+  const rawPage = Number.parseInt(String(query.page || ''), 10);
+  const rawPageSize = Number.parseInt(String(query.pageSize || ''), 10);
+  const rawSort = String(query.sort || 'newest').toLowerCase();
+
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const pageSize = Number.isFinite(rawPageSize) ? Math.max(3, Math.min(30, rawPageSize)) : 15;
+  const q = String(query.q || '').trim().toLowerCase();
+  const sort: GallerySort = ['newest', 'oldest', 'name', 'size'].includes(rawSort) ? rawSort as GallerySort : 'newest';
+
+  return { page, pageSize, q, sort };
+}
+
+function paginate<T>(items: T[], query: { page: number; pageSize: number; q: string; sort: GallerySort }): PagedResult<T> {
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+  const page = Math.min(query.page, totalPages);
+  const start = (page - 1) * query.pageSize;
+  const end = start + query.pageSize;
+
+  return {
+    items: items.slice(start, end),
+    total,
+    page,
+    pageSize: query.pageSize,
+    totalPages,
+    q: query.q,
+    sort: query.sort,
+  };
+}
 

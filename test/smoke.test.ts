@@ -495,6 +495,51 @@ test('GET /images/:id/grouped/html orders groups by uploaded time (newest first)
   assert.ok(html.indexOf('newer-group.jpeg') < html.indexOf('older-group.jpeg'));
 });
 
+test('GET /images/:id/html applies server-side query params for page, pageSize, q and sort', async () => {
+  const folderPath = path.join(uploadsRoot, '13');
+  fs.mkdirSync(folderPath, { recursive: true });
+  fs.writeFileSync(path.join(folderPath, 'new-a.jpeg'), 'a');
+  fs.writeFileSync(path.join(folderPath, 'new-b.jpeg'), 'b');
+  fs.writeFileSync(path.join(folderPath, 'old-c.jpeg'), 'c');
+  fs.writeFileSync(path.join(folderPath, 'old-d.jpeg'), 'd');
+
+  const { token } = await login('user13', 'password13');
+  const response = await fetch(createUrl('/images/13/html?page=1&pageSize=3&q=new&sort=name'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /Page 1 of 1 \(2 matching images\)/);
+  assert.match(html, /value="new"/);
+  assert.match(html, /name="pageSize"[^>]*value="3"/);
+  assert.ok(html.indexOf('new-a.jpeg') < html.indexOf('new-b.jpeg'));
+  assert.equal(html.includes('old-c.jpeg'), false);
+});
+
+test('GET /images/:id/grouped/html applies server-side sort query', async () => {
+  const folderPath = path.join(uploadsRoot, '13');
+  fs.mkdirSync(folderPath, { recursive: true });
+  fs.writeFileSync(path.join(folderPath, 'beta.jpeg'), 'beta');
+  fs.writeFileSync(path.join(folderPath, 'alpha.jpeg'), 'alpha');
+  fs.writeFileSync(path.join(folderPath, 'gamma.jpeg'), 'gamma');
+
+  const { token } = await login('user13', 'password13');
+  const response = await fetch(createUrl('/images/13/grouped/html?page=1&pageSize=3&sort=name'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /Page 1 of 1 \(3 matching groups\)/);
+  assert.ok(html.indexOf('alpha.jpeg') < html.indexOf('beta.jpeg'));
+  assert.ok(html.indexOf('beta.jpeg') < html.indexOf('gamma.jpeg'));
+});
+
 test('GET /images/:id/grouped/html includes group search controls', async () => {
   const folderPath = path.join(uploadsRoot, '13');
   fs.mkdirSync(folderPath, { recursive: true });

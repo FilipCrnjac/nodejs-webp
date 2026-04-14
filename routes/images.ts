@@ -30,7 +30,7 @@ router.get('/:id/html', function(req: Request, res: Response) {
   }
 
   try {
-    const html = image.getDirectoryHtml(folderId);
+    const html = image.getDirectoryHtml(folderId, readGalleryQuery(req));
     if (sendHtmlWithCacheValidation(req, res, html)) {
       return null;
     }
@@ -259,7 +259,7 @@ router.get('/:id/grouped/html', function(req: Request, res: Response) {
   }
 
   try {
-    const html = image.getGroupedGalleryHtml(folderId);
+    const html = image.getGroupedGalleryHtml(folderId, readGalleryQuery(req));
     if (sendHtmlWithCacheValidation(req, res, html)) {
       return null;
     }
@@ -360,5 +360,19 @@ function isNotModified(req: Request, etag: string, mtimeMs: number): boolean {
   }
 
   return Math.trunc(mtimeMs) <= ifModifiedSince;
+}
+
+function readGalleryQuery(req: Request): { page?: number; pageSize?: number; q?: string; sort?: string } {
+  const parseNumber = (value: unknown): number | undefined => {
+    const parsed = Number.parseInt(String(value || ''), 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  return {
+    page: parseNumber(req.query.page),
+    pageSize: parseNumber(req.query.pageSize),
+    q: typeof req.query.q === 'string' ? req.query.q : undefined,
+    sort: typeof req.query.sort === 'string' ? req.query.sort : undefined,
+  };
 }
 
