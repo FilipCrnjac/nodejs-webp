@@ -773,4 +773,27 @@ test('POST /uploads avoids overwrite for repeated uploads and prefixes quality i
   }
 });
 
+test('POST /uploads rate limits excessive requests', async () => {
+  const { token } = await login('user1', 'password1');
+  let finalStatus = 0;
+
+  for (let i = 0; i < 24; i += 1) {
+    const formData = new FormData();
+    const response = await fetch(createUrl('/uploads'), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData,
+    });
+
+    finalStatus = response.status;
+    if (response.status === 429) {
+      break;
+    }
+  }
+
+  assert.equal(finalStatus, 429);
+});
+
 

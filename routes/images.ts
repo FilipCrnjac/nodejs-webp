@@ -8,12 +8,15 @@ import express, { Request, Response } from 'express';
 
 import Image = require('../src/controller/image');
 import ImageAuditService = require('../src/services/imageAuditService');
+import createRateLimiter = require('../src/auth/rateLimit');
 
 type AuthenticatedRequest = Request & { userId: number };
 
 const router = express.Router();
 const image = new Image();
 const imageAuditService = new ImageAuditService();
+const imageReadRateLimit = createRateLimiter({ keyPrefix: 'images-read', max: 300, windowMs: 10 * 60 * 1000 });
+const imageDeleteRateLimit = createRateLimiter({ keyPrefix: 'images-delete', max: 30, windowMs: 10 * 60 * 1000 });
 
 /* GET uploaded images folders list in HTML */
 router.get('/', function(req: Request, res: Response) {
@@ -57,7 +60,7 @@ router.get('/:id/json', function(req: Request, res: Response) {
 });
 
 /* GET single image file from selected folder (authorized user only) */
-router.get('/:id/files/:name', async function(req: Request, res: Response) {
+router.get('/:id/files/:name', imageReadRateLimit, async function(req: Request, res: Response) {
   const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
   if (!folderId) {
     return null;
@@ -97,7 +100,7 @@ router.get('/:id/files/:name', async function(req: Request, res: Response) {
 });
 
 /* DELETE image file and its variants from selected folder */
-router.delete('/:id/files/:name', async function(req: Request, res: Response) {
+router.delete('/:id/files/:name', imageDeleteRateLimit, async function(req: Request, res: Response) {
   const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
   if (!folderId) {
     return null;
@@ -145,7 +148,7 @@ router.delete('/:id/files/:name', async function(req: Request, res: Response) {
 });
 
 /* DELETE whole image group (original + variants) */
-router.delete('/:id/groups/:groupId', async function(req: Request, res: Response) {
+router.delete('/:id/groups/:groupId', imageDeleteRateLimit, async function(req: Request, res: Response) {
   const folderId = validateRequestedFolder(req as AuthenticatedRequest, res);
   if (!folderId) {
     return null;

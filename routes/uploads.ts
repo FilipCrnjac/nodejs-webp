@@ -5,6 +5,7 @@ import Upload = require('./../src/controller/upload');
 import UploadJobService = require('./../src/services/uploadJobService');
 import AuthService = require('./../src/auth/authService');
 import ImageService = require('./../src/services/imageService');
+import createRateLimiter = require('./../src/auth/rateLimit');
 
 type HttpError = Error & { status?: number };
 
@@ -13,13 +14,14 @@ const upload = new Upload();
 const uploadJobService = new UploadJobService();
 const authService = new AuthService();
 const imageService = new ImageService();
+const uploadRateLimit = createRateLimiter({ keyPrefix: 'upload', max: 20, windowMs: 10 * 60 * 1000 });
 
 /* GET uploads index page. */
 router.get('/', function(req: Request, res: Response) {
   res.type('.html').send(upload.getUploadsPage());
 });
 
-router.post('/', Auth.isAuthenticated, async (req: Request, res: Response) => {
+router.post('/', Auth.isAuthenticated, uploadRateLimit, async (req: Request, res: Response) => {
   try {
     res.type('.html').send(await upload.uploadPhoto(req as Request & { userId: number }, res));
   } catch (error) {
