@@ -295,6 +295,60 @@ test('GET /images/:id/files/:name blocks cross-user access and serves owner file
   assert.equal(text, 'demo-content');
 });
 
+test('GET /images/:id/html sends cache headers and supports ETag revalidation', async () => {
+  fs.mkdirSync(path.join(uploadsRoot, '13'), { recursive: true });
+  fs.writeFileSync(path.join(uploadsRoot, '13', 'sample.jpeg'), 'demo-content');
+
+  const { token } = await login('user13', 'password13');
+  const first = await fetch(createUrl('/images/13/html'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const html = await first.text();
+
+  assert.equal(first.status, 200);
+  assert.match(first.headers.get('cache-control') || '', /private, no-cache/);
+  const etag = first.headers.get('etag') || '';
+  assert.notEqual(etag, '');
+  assert.match(html, /My Gallery/);
+
+  const second = await fetch(createUrl('/images/13/html'), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'If-None-Match': etag,
+    }
+  });
+  assert.equal(second.status, 304);
+});
+
+test('GET /images/:id/files/:name sends cache headers and returns 304 for matching ETag', async () => {
+  fs.mkdirSync(path.join(uploadsRoot, '13'), { recursive: true });
+  fs.writeFileSync(path.join(uploadsRoot, '13', 'sample.jpeg'), 'demo-content');
+
+  const { token } = await login('user13', 'password13');
+  const first = await fetch(createUrl('/images/13/files/sample.jpeg'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const body = await first.text();
+
+  assert.equal(first.status, 200);
+  assert.equal(body, 'demo-content');
+  assert.match(first.headers.get('cache-control') || '', /immutable/);
+  const etag = first.headers.get('etag') || '';
+  assert.notEqual(etag, '');
+
+  const second = await fetch(createUrl('/images/13/files/sample.jpeg'), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'If-None-Match': etag,
+    }
+  });
+  assert.equal(second.status, 304);
+});
+
 test('GET /images/:id/groups/:groupId/html shows audit metadata and download count', async () => {
   fs.mkdirSync(path.join(uploadsRoot, '13'), { recursive: true });
   fs.writeFileSync(path.join(uploadsRoot, '13', 'sample.jpeg'), 'demo-content');

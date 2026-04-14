@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import { createHash } from 'crypto';
 
 import express, { Request, Response } from 'express';
 
@@ -29,7 +30,11 @@ router.get('/:id/html', function(req: Request, res: Response) {
   }
 
   try {
-    return res.type("html").send(image.getDirectoryHtml(folderId));
+    const html = image.getDirectoryHtml(folderId);
+    if (sendHtmlWithCacheValidation(req, res, html)) {
+      return null;
+    }
+    return res.type("html").send(html);
   } catch (e) {
     console.log(e);
     return res.status(500).json({ error: true, message: `Couldn't load folder ${folderId} images (HTML).`});
@@ -74,6 +79,16 @@ router.get('/:id/files/:name', async function(req: Request, res: Response) {
 
   try {
     await fs.access(fullPath);
+    const stats = await fs.stat(fullPath);
+    const etag = buildWeakEtag(stats.size, stats.mtimeMs);
+    res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+    res.setHeader('ETag', etag);
+    res.setHeader('Last-Modified', new Date(stats.mtimeMs).toUTCString());
+
+    if (isNotModified(req, etag, stats.mtimeMs)) {
+      return res.status(304).end();
+    }
+
     imageAuditService.incrementDownloads(folderId, decodedName);
     return res.sendFile(fullPath);
   } catch {
@@ -244,7 +259,11 @@ router.get('/:id/grouped/html', function(req: Request, res: Response) {
   }
 
   try {
-    return res.type("html").send(image.getGroupedGalleryHtml(folderId));
+    const html = image.getGroupedGalleryHtml(folderId);
+    if (sendHtmlWithCacheValidation(req, res, html)) {
+      return null;
+    }
+    return res.type("html").send(html);
   } catch (e) {
     console.log(e);
     return res.status(500).json({ error: true, message: `Couldn't load folder ${folderId} images (grouped HTML).`});
@@ -270,8 +289,10 @@ router.get('/:id/groups/:groupId/html', function(req: Request, res: Response) {
     imageAuditService.recordView(folderId, group.originalName);
     const groupAudit = imageAuditService.getGroupAudit(folderId, group.originalName);
 
-    // Generate HTML for this specific group
     const html = image.getGroupDetailHtml(folderId, group, groupAudit);
+    if (sendHtmlWithCacheValidation(req, res, html)) {
+      return null;
+    }
     return res.type("html").send(html);
   } catch (e) {
     console.log(e);
@@ -304,3 +325,40 @@ function validateRequestedFolder(req: AuthenticatedRequest, res: Response): numb
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+function sendHtmlWithCacheValidation(req: Request, res: Response, html: string): boolean {
+  const etag = createHash('sha1').update(html).digest('hex');
+  res.setHeader('Cache-Control', 'private, no-cache');
+  res.setHeader('ETag', etag);
+
+  if (String(req.headers['if-none-match'] || '') === etag) {
+    res.status(304).end();
+    return true;
+  }
+
+  return false;
+}
+
+function buildWeakEtag(size: number, mtimeMs: number): string {
+  return `W/"${size.toString(16)}-${Math.trunc(mtimeMs).toString(16)}"`;
+}
+
+function isNotModified(req: Request, etag: string, mtimeMs: number): boolean {
+  const ifNoneMatch = String(req.headers['if-none-match'] || '');
+  if (ifNoneMatch && ifNoneMatch === etag) {
+    return true;
+  }
+
+  const ifModifiedSinceRaw = String(req.headers['if-modified-since'] || '');
+  if (!ifModifiedSinceRaw) {
+    return false;
+  }
+
+  const ifModifiedSince = Date.parse(ifModifiedSinceRaw);
+  if (!Number.isFinite(ifModifiedSince)) {
+    return false;
+  }
+
+  return Math.trunc(mtimeMs) <= ifModifiedSince;
+}
+
