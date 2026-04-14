@@ -55,36 +55,44 @@ router.get('/', function(req: Request, res: Response) {
           opacity: 0.9;
         }
 
+        .main-layout {
+          display: grid;
+          grid-template-columns: 220px 1fr;
+          min-height: 560px;
+        }
+
         .tabs {
-          display: flex;
-          border-bottom: 1px solid #e0e0e0;
           background: #f5f5f5;
+          border-right: 1px solid #e0e0e0;
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
         }
 
         .tab-button {
-          flex: 1;
-          padding: 16px 20px;
+          width: 100%;
+          padding: 12px 14px;
           border: none;
+          border-radius: 8px;
           background: transparent;
           cursor: pointer;
           font-size: 14px;
-          font-weight: 500;
-          color: #666;
-          transition: all 0.3s ease;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          border-bottom: 3px solid transparent;
+          font-weight: 600;
+          color: #5b6475;
+          transition: all 0.2s ease;
+          text-align: left;
         }
 
         .tab-button:hover {
-          background: #eee;
+          background: #eceff8;
           color: #333;
         }
 
         .tab-button.active {
-          color: #667eea;
-          border-bottom-color: #667eea;
-          background: white;
+          color: #fff;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          box-shadow: 0 8px 18px rgba(102, 126, 234, 0.3);
         }
 
         .content {
@@ -95,6 +103,7 @@ router.get('/', function(req: Request, res: Response) {
 
         .tab-panels {
           min-height: 560px;
+          background: #fff;
         }
 
         .content.active {
@@ -332,8 +341,22 @@ router.get('/', function(req: Request, res: Response) {
             font-size: 24px;
           }
 
+          .main-layout {
+            grid-template-columns: 1fr;
+          }
+
+          .tabs {
+            border-right: none;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+          }
+
           .tab-button {
-            padding: 12px 10px;
+            text-align: center;
+            padding: 10px 8px;
             font-size: 12px;
           }
 
@@ -356,6 +379,7 @@ router.get('/', function(req: Request, res: Response) {
           <p>Share, manage, and optimize your images</p>
         </div>
 
+        <div class="main-layout">
         <div class="tabs">
           <button class="tab-button active" onclick="switchTab(event, 'home')">Home</button>
           <button class="tab-button" onclick="switchTab(event, 'login')">Account</button>
@@ -384,6 +408,7 @@ router.get('/', function(req: Request, res: Response) {
             <strong>Get started:</strong> Sign in or register to manage your images.
           </p>
           <button class="cta-button" onclick="switchTab(event, 'login')">Go to Account →</button>
+        </div>
         </div>
 
         <!-- LOGIN/REGISTER TAB -->
