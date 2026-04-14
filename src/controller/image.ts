@@ -699,7 +699,6 @@ class Image {
               <div class="group-size-item"><span>Lossy ${lossyCompression ? `<em class="compression-chip compression-lossy">${lossyCompression}</em>` : ''}</span><strong>${lossySize}</strong></div>
               <div class="group-size-item"><span>Lossless ${losslessCompression ? `<em class="compression-chip compression-lossless">${losslessCompression}</em>` : ''}</span><strong>${losslessSize}</strong></div>
             </div>
-            <div class="image-variants">${group.variants.length} variant${group.variants.length !== 1 ? 's' : ''}</div>
             <div class="group-actions">
               <a href="${shareLink}" class="group-action-btn view-group-btn" title="Open this group details page" data-label="View group" aria-label="View group">
                 <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -1120,11 +1119,6 @@ class Image {
             color: #b91c1c;
           }
 
-          .image-variants {
-            font-size: 11px;
-            color: #aaa;
-            margin-top: 4px;
-          }
 
           .group-actions {
             margin-top: 8px;
