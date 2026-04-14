@@ -1112,8 +1112,8 @@ class Image {
       const originalSize = formatFileSize(group.original.sizeBytes);
       const lossySize = lossyVariant ? formatFileSize(lossyVariant.sizeBytes) : '—';
       const losslessSize = losslessVariant ? formatFileSize(losslessVariant.sizeBytes) : '—';
-      const lossyCompression = lossyVariant ? formatCompressionPercent(group.original.sizeBytes, lossyVariant.sizeBytes) : '';
-      const losslessCompression = losslessVariant ? formatCompressionPercent(group.original.sizeBytes, losslessVariant.sizeBytes) : '';
+      const lossyCompression = lossyVariant ? formatCompressionSummary(group.original.sizeBytes, lossyVariant.sizeBytes) : '';
+      const losslessCompression = losslessVariant ? formatCompressionSummary(group.original.sizeBytes, losslessVariant.sizeBytes) : '';
 
       const lossyVariantUrl = lossyVariant ? `/images/${folderId}/files/${encodeURIComponent(lossyVariant.name)}` : '';
       const losslessVariantUrl = losslessVariant ? `/images/${folderId}/files/${encodeURIComponent(losslessVariant.name)}` : '';
@@ -2355,14 +2355,14 @@ class Image {
         label: 'Lossy',
         variant: lossyVariant,
         emptyText: 'No lossy variant',
-        compressionText: lossyVariant ? formatCompressionPercent(group.original.sizeBytes, lossyVariant.sizeBytes) : '',
+        compressionText: lossyVariant ? formatCompressionSummary(group.original.sizeBytes, lossyVariant.sizeBytes) : '',
         compressionClass: 'compression-lossy',
       },
       {
         label: 'Lossless',
         variant: losslessVariant,
         emptyText: 'No lossless variant',
-        compressionText: losslessVariant ? formatCompressionPercent(group.original.sizeBytes, losslessVariant.sizeBytes) : '',
+        compressionText: losslessVariant ? formatCompressionSummary(group.original.sizeBytes, losslessVariant.sizeBytes) : '',
         compressionClass: 'compression-lossless',
       },
     ].map(item => {
@@ -2795,6 +2795,13 @@ function formatCompressionPercent(originalBytes: number, variantBytes: number): 
 
   const percent = Math.round(((originalBytes - variantBytes) / originalBytes) * 100);
   return `${percent}%`;
+}
+
+function formatCompressionSummary(originalBytes: number, variantBytes: number): string {
+  const percent = formatCompressionPercent(originalBytes, variantBytes);
+  const diff = Math.abs(originalBytes - variantBytes);
+  const direction = variantBytes <= originalBytes ? 'reduced' : 'increased';
+  return `${percent} ${direction} (${formatFileSize(diff)})`;
 }
 
 function escapeHtml(value: string): string {
