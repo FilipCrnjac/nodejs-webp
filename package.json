@@ -17,7 +17,6 @@
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "imagemin": "^7.0.1",
-    "imagemin-web": "^1.1.1",
     "imagemin-webp": "^5.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
