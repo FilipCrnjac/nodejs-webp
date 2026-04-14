@@ -2799,9 +2799,19 @@ function formatCompressionPercent(originalBytes: number, variantBytes: number): 
 
 function formatCompressionSummary(originalBytes: number, variantBytes: number): string {
   const percent = formatCompressionPercent(originalBytes, variantBytes);
-  const diff = Math.abs(originalBytes - variantBytes);
-  const direction = variantBytes <= originalBytes ? 'reduced' : 'increased';
-  return `${percent} ${direction} (${formatFileSize(diff)})`;
+  const signedDiff = formatSignedSizeDiff(originalBytes, variantBytes);
+  return `${percent} (${signedDiff})`;
+}
+
+function formatSignedSizeDiff(originalBytes: number, variantBytes: number): string {
+  const diff = variantBytes - originalBytes;
+  if (diff === 0) {
+    return '0B';
+  }
+
+  const sign = diff > 0 ? '+' : '-';
+  const magnitude = formatFileSize(Math.abs(diff)).replace(/\s+/g, '');
+  return `${sign}${magnitude}`;
 }
 
 function escapeHtml(value: string): string {
