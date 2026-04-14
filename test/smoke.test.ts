@@ -10,6 +10,7 @@ import app = require('../server');
 const uploadsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nodejs-webp-tests-'));
 process.env.UPLOADS_FOLDER = uploadsRoot;
 const sampleImagePath = path.join(process.cwd(), 'uploads/images/15/image-1775633444155.png');
+const sampleGifPath = path.join(process.cwd(), 'uploads/images/23/challenge-accepted-1775633941137.gif');
 
 let server: Server;
 let baseUrl: string;
@@ -38,6 +39,11 @@ async function login(username: string, password: string): Promise<{ token: strin
 function createImageFile() {
   const buffer = fs.readFileSync(sampleImagePath);
   return new File([buffer], 'pixel.png', { type: 'image/png' });
+}
+
+function createGifFile() {
+  const buffer = fs.readFileSync(sampleGifPath);
+  return new File([buffer], 'pixel.gif', { type: 'image/gif' });
 }
 
 function extractUploadJobId(html: string): string {
@@ -710,6 +716,34 @@ test('POST /uploads stores the original image and two webp variants', async () =
 
   assert.equal(files.length, 3);
   assert.ok(files.some(file => /pixel-\d+\.png/.test(file)));
+  assert.ok(files.some(file => /75-lossless_pixel-\d+\.webp/.test(file)));
+  assert.ok(files.some(file => /75-lossy_pixel-\d+\.webp/.test(file)));
+});
+
+test('POST /uploads accepts GIF and stores original plus two webp variants', async () => {
+  const { token } = await login('user1', 'password1');
+  const formData = new FormData();
+  formData.set('myImage', createGifFile());
+
+  const response = await fetch(createUrl('/uploads'), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData,
+  });
+
+  const html = await response.text();
+  assert.equal(response.status, 200);
+  const jobId = extractUploadJobId(html);
+  const job = await waitForUploadJob(`/uploads/jobs/${jobId}/status`, token);
+  assert.equal(job.status, 'completed');
+
+  const userDirectory = path.join(uploadsRoot, '1');
+  const files = fs.readdirSync(userDirectory).sort();
+
+  assert.equal(files.length, 3);
+  assert.ok(files.some(file => /pixel-\d+\.gif/.test(file)));
   assert.ok(files.some(file => /75-lossless_pixel-\d+\.webp/.test(file)));
   assert.ok(files.some(file => /75-lossy_pixel-\d+\.webp/.test(file)));
 });

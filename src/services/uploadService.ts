@@ -15,7 +15,7 @@ import AuthService = require('./../auth/authService');
 type HttpError = Error & { status: number };
 type AuthenticatedUploadRequest = Request & { userId: number; body?: { lossyQuality?: string; losslessQuality?: string } };
 
-const supportedImageFormats = new Set(['image/png', 'image/jpeg']);
+const supportedImageFormats = new Set(['image/png', 'image/jpeg', 'image/gif']);
 const defaultQuality = 75;
 const maxUploadSizeBytes = 10 * 1024 * 1024;
 const imageAuditService = new ImageAuditService();
