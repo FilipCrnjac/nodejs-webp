@@ -194,6 +194,31 @@ class Image {
             cursor: pointer;
           }
 
+          .page-size-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #4b5563;
+            font-weight: 600;
+          }
+
+          .page-size-input {
+            width: 64px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 9px;
+            font-size: 13px;
+            color: #1f2937;
+            background: #fff;
+          }
+
+          .page-size-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+          }
+
           .pagination {
             margin-top: 16px;
             background: white;
@@ -555,6 +580,10 @@ class Image {
             </div>
             <input id="gallery-search-input" class="gallery-search" type="search" placeholder="Search by image name..." aria-label="Search images by file name">
             <button id="gallery-search-clear" class="clear-search-btn" type="button">Clear</button>
+            <label class="page-size-control" for="gallery-page-size">
+              Per page
+              <input id="gallery-page-size" class="page-size-input" type="number" min="3" max="30" step="1" value="15" aria-label="Items per page">
+            </label>
           </div>
 
           <div id="gallery-container" class="gallery${imagesHtml.trim() === '' ? ' empty' : ''}">
@@ -596,7 +625,10 @@ class Image {
 
         <script>
           const startTime = new Date().getTime();
-          const PAGE_SIZE = 9;
+          const MIN_PAGE_SIZE = 3;
+          const MAX_PAGE_SIZE = 30;
+          const DEFAULT_PAGE_SIZE = 15;
+          let pageSize = DEFAULT_PAGE_SIZE;
           let currentPage = 1;
           let totalPages = 1;
           let currentFilterQuery = '';
@@ -643,7 +675,7 @@ class Image {
               return;
             }
 
-            if (items.length <= PAGE_SIZE) {
+            if (items.length <= pageSize) {
               paginationContainer.classList.add('hidden');
               items.forEach(item => {
                 item.style.display = '';
@@ -651,13 +683,13 @@ class Image {
               return;
             }
 
-            totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+            totalPages = Math.max(1, Math.ceil(items.length / pageSize));
             if (currentPage > totalPages) {
               currentPage = totalPages;
             }
 
-            const start = (currentPage - 1) * PAGE_SIZE;
-            const end = start + PAGE_SIZE;
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
             items.forEach((item, index) => {
               item.style.display = index >= start && index < end ? '' : 'none';
             });
@@ -678,6 +710,14 @@ class Image {
             currentFilterQuery = String(query || '').trim().toLowerCase();
             currentPage = 1;
             renderPagination();
+          }
+
+          function normalizePageSize(value) {
+            const parsed = Number.parseInt(String(value || ''), 10);
+            if (!Number.isFinite(parsed)) {
+              return DEFAULT_PAGE_SIZE;
+            }
+            return Math.max(MIN_PAGE_SIZE, Math.min(MAX_PAGE_SIZE, parsed));
           }
 
           function openLightboxFromCard(card) {
@@ -846,6 +886,7 @@ class Image {
 
           const searchInput = document.getElementById('gallery-search-input');
           const clearSearchButton = document.getElementById('gallery-search-clear');
+          const pageSizeInput = document.getElementById('gallery-page-size');
           if (searchInput) {
             searchInput.addEventListener('input', event => {
               applyImageSearch(event.target.value || '');
@@ -858,6 +899,17 @@ class Image {
               }
               applyImageSearch('');
             });
+          }
+
+          if (pageSizeInput) {
+            pageSizeInput.addEventListener('change', event => {
+              pageSize = normalizePageSize(event.target.value);
+              pageSizeInput.value = String(pageSize);
+              currentPage = 1;
+              renderPagination();
+            });
+            pageSize = normalizePageSize(pageSizeInput.value);
+            pageSizeInput.value = String(pageSize);
           }
 
           renderPagination();
@@ -1087,6 +1139,31 @@ class Image {
             font-weight: 600;
             padding: 10px 12px;
             cursor: pointer;
+          }
+
+          .page-size-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #4b5563;
+            font-weight: 600;
+          }
+
+          .page-size-input {
+            width: 64px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 9px;
+            font-size: 13px;
+            color: #1f2937;
+            background: #fff;
+          }
+
+          .page-size-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
           }
 
           .view-toggle {
@@ -1556,6 +1633,10 @@ class Image {
             </div>
             <input id="gallery-search-input" class="gallery-search" type="search" placeholder="Search by image name..." aria-label="Search groups by image name">
             <button id="gallery-search-clear" class="clear-search-btn" type="button">Clear</button>
+            <label class="page-size-control" for="gallery-page-size">
+              Per page
+              <input id="gallery-page-size" class="page-size-input" type="number" min="3" max="30" step="1" value="15" aria-label="Items per page">
+            </label>
           </div>
 
           <div id="gallery-container" class="gallery${groups.length === 0 ? ' empty' : ''}">
@@ -1697,7 +1778,10 @@ class Image {
 
         <script>
           const startTime = new Date().getTime();
-          const PAGE_SIZE = 9;
+          const MIN_PAGE_SIZE = 3;
+          const MAX_PAGE_SIZE = 30;
+          const DEFAULT_PAGE_SIZE = 15;
+          let pageSize = DEFAULT_PAGE_SIZE;
           let currentPage = 1;
           let totalPages = 1;
           let currentFilterQuery = '';
@@ -1743,7 +1827,7 @@ class Image {
               return;
             }
 
-            if (items.length <= PAGE_SIZE) {
+            if (items.length <= pageSize) {
               paginationContainer.classList.add('hidden');
               items.forEach(item => {
                 item.style.display = '';
@@ -1751,13 +1835,13 @@ class Image {
               return;
             }
 
-            totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+            totalPages = Math.max(1, Math.ceil(items.length / pageSize));
             if (currentPage > totalPages) {
               currentPage = totalPages;
             }
 
-            const start = (currentPage - 1) * PAGE_SIZE;
-            const end = start + PAGE_SIZE;
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
             items.forEach((item, index) => {
               item.style.display = index >= start && index < end ? '' : 'none';
             });
@@ -1778,6 +1862,14 @@ class Image {
             currentFilterQuery = String(query || '').trim().toLowerCase();
             currentPage = 1;
             renderPagination();
+          }
+
+          function normalizePageSize(value) {
+            const parsed = Number.parseInt(String(value || ''), 10);
+            if (!Number.isFinite(parsed)) {
+              return DEFAULT_PAGE_SIZE;
+            }
+            return Math.max(MIN_PAGE_SIZE, Math.min(MAX_PAGE_SIZE, parsed));
           }
 
           function openGroupFromCard(event, card) {
@@ -1953,6 +2045,7 @@ class Image {
 
           const searchInput = document.getElementById('gallery-search-input');
           const clearSearchButton = document.getElementById('gallery-search-clear');
+          const pageSizeInput = document.getElementById('gallery-page-size');
           if (searchInput) {
             searchInput.addEventListener('input', event => {
               applyGroupSearch(event.target.value || '');
@@ -1965,6 +2058,17 @@ class Image {
               }
               applyGroupSearch('');
             });
+          }
+
+          if (pageSizeInput) {
+            pageSizeInput.addEventListener('change', event => {
+              pageSize = normalizePageSize(event.target.value);
+              pageSizeInput.value = String(pageSize);
+              currentPage = 1;
+              renderPagination();
+            });
+            pageSize = normalizePageSize(pageSizeInput.value);
+            pageSizeInput.value = String(pageSize);
           }
 
           renderPagination();
