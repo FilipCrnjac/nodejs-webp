@@ -419,8 +419,8 @@ test('GET /images/:id/grouped/html includes group search controls', async () => 
   assert.match(html, /compression-lossless/);
   assert.match(html, /View group/);
   assert.match(html, /Copy link/);
-  assert.match(html, />ZIP</);
-  assert.match(html, />Delete</);
+  assert.match(html, /zip-btn/);
+  assert.match(html, /delete-group-btn/);
   assert.match(html, /ondblclick="openGroupFromCard\(event, this\)"/);
 });
 
