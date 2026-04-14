@@ -8,6 +8,7 @@ import Webp = require('./../utils/webp');
 import FileHelperSync = require('./../utils/fileHelperSync');
 import createHttpError = require('./../utils/httpError');
 import ImageAuditService = require('./imageAuditService');
+import UploadJobService = require('./uploadJobService');
 
 type HttpError = Error & { status: number };
 type AuthenticatedUploadRequest = Request & { userId: number; body?: { lossyQuality?: string; losslessQuality?: string } };
@@ -16,6 +17,7 @@ const supportedImageFormats = new Set(['image/png', 'image/jpeg']);
 const defaultQuality = 75;
 const maxUploadSizeBytes = 10 * 1024 * 1024;
 const imageAuditService = new ImageAuditService();
+const uploadJobService = new UploadJobService();
 
 class UploadService {
   async uploadPhoto(req: AuthenticatedUploadRequest, res: Response): Promise<string> {
@@ -72,12 +74,21 @@ class UploadService {
           losslessQuality = Math.max(1, Math.min(100, parseInt(losslessQualityStr, 10) || defaultQuality));
 
           console.log(`📊 Upload quality settings - Lossy: ${lossyQuality}, Lossless: ${losslessQuality}`);
+          const job = uploadJobService.createJob({
+            userId,
+            originalFileName: req.file.originalname,
+            storedFileName: req.file.filename,
+            lossyQuality,
+            losslessQuality,
+          });
 
-          const startTimeConversion = process.hrtime();
-          await runConvertConcurrently(req, lossyQuality, losslessQuality);
-          logExecutionTime(startTimeConversion, 'Concurrent conversion');
-          imageAuditService.recordUpload(userId, req.file.filename, lossyQuality, losslessQuality);
-          const uploadedGroupId = encodeURIComponent(path.parse(req.file.filename).name);
+          void processUploadInBackground({
+            jobId: job.id,
+            req,
+            userId,
+            lossyQuality,
+            losslessQuality,
+          });
 
           const html = `
             <!DOCTYPE html>
@@ -85,7 +96,7 @@ class UploadService {
             <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Upload Complete</title>
+              <title>Upload Processing</title>
               <style>
                 * {
                   margin: 0;
@@ -333,8 +344,8 @@ class UploadService {
                 <div class="card">
                   <div class="hero">
                     <div class="hero-badge">✅</div>
-                    <h1>Upload Complete</h1>
-                    <p>Your image has been uploaded successfully and optimized into WebP variants. Everything is ready for review.</p>
+                     <h1>Upload Accepted</h1>
+                     <p>Your image has been saved. WebP variants are now being generated in the background.</p>
                   </div>
 
                   <div class="content">
@@ -354,7 +365,11 @@ class UploadService {
                     </div>
 
                     <div class="info-box">
-                      <strong>Finished:</strong> the original image has been stored and two WebP outputs were generated using your selected quality settings.
+                      <strong>In progress:</strong> processing runs in the background. This page checks status automatically.
+                    </div>
+
+                    <div id="job-status" class="info-box">
+                      <strong>Status:</strong> queued
                     </div>
 
                     <div class="quality-grid">
@@ -371,7 +386,7 @@ class UploadService {
                     </div>
 
                     <div class="actions">
-                      <a class="button button-primary" href="/images/${userId}/groups/${uploadedGroupId}/html">Open uploaded group</a>
+                      <a id="open-group-btn" class="button button-primary" href="#" style="display:none;">Open uploaded group</a>
                       <a class="button button-primary" href="/images/${userId}/html">View images</a>
                       <a class="button button-secondary" href="/uploads">Upload another image</a>
                       <a class="button button-secondary" href="/">Back to app</a>
@@ -379,6 +394,42 @@ class UploadService {
                   </div>
                 </div>
               </div>
+              <script>
+                const statusBox = document.getElementById('job-status');
+                const openGroupBtn = document.getElementById('open-group-btn');
+
+                async function pollJobStatus() {
+                  try {
+                    const response = await fetch('/uploads/jobs/${job.id}/status', { credentials: 'same-origin' });
+                    if (!response.ok) {
+                      statusBox.innerHTML = '<strong>Status:</strong> failed to fetch processing status';
+                      return;
+                    }
+
+                    const body = await response.json();
+                    statusBox.innerHTML = '<strong>Status:</strong> ' + body.status;
+
+                    if (body.status === 'completed' && body.groupId) {
+                      const groupLink = '/images/${userId}/groups/' + encodeURIComponent(body.groupId) + '/html';
+                      openGroupBtn.href = groupLink;
+                      openGroupBtn.style.display = '';
+                      statusBox.innerHTML = '<strong>Status:</strong> completed';
+                      return;
+                    }
+
+                    if (body.status === 'failed') {
+                      statusBox.innerHTML = '<strong>Status:</strong> failed (' + (body.error || 'conversion error') + ')';
+                      return;
+                    }
+
+                    setTimeout(pollJobStatus, 1200);
+                  } catch {
+                    statusBox.innerHTML = '<strong>Status:</strong> network error while polling';
+                  }
+                }
+
+                setTimeout(pollJobStatus, 400);
+              </script>
             </body>
             </html>
           `;
@@ -399,6 +450,30 @@ function runConvertConcurrently(req: AuthenticatedUploadRequest, lossyQuality: n
     Webp.convertLossy(req.file!.path, req.file!.destination, lossyQuality),
     Webp.convertLossless(req.file!.path, req.file!.destination, losslessQuality)
   ]);
+}
+
+async function processUploadInBackground(payload: {
+  jobId: string;
+  req: AuthenticatedUploadRequest;
+  userId: number;
+  lossyQuality: number;
+  losslessQuality: number;
+}): Promise<void> {
+  const { jobId, req, userId, lossyQuality, losslessQuality } = payload;
+  uploadJobService.markProcessing(jobId);
+
+  try {
+    const startTimeConversion = process.hrtime();
+    await runConvertConcurrently(req, lossyQuality, losslessQuality);
+    logExecutionTime(startTimeConversion, 'Concurrent conversion');
+    imageAuditService.recordUpload(userId, req.file!.filename, lossyQuality, losslessQuality);
+    const groupId = path.parse(req.file!.filename).name;
+    uploadJobService.markCompleted(jobId, groupId);
+  } catch (error) {
+    cleanupUploadArtifacts(req.file?.path, [lossyQuality, losslessQuality]);
+    const message = error instanceof Error ? error.message : 'Image conversion failed.';
+    uploadJobService.markFailed(jobId, message);
+  }
 }
 
 function logExecutionTime(start: [number, number], message: string): void {

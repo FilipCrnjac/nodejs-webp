@@ -40,6 +40,34 @@ function createImageFile() {
   return new File([buffer], 'pixel.png', { type: 'image/png' });
 }
 
+function extractUploadJobId(html: string): string {
+  const match = html.match(/\/uploads\/jobs\/([\w-]+)\/status/);
+  assert.ok(match && match[1], 'Expected upload job status endpoint in HTML response.');
+  return String(match[1]);
+}
+
+async function waitForUploadJob(baseUrlWithPath: string, token: string, timeoutMs = 12000): Promise<{ status: string; groupId?: string }> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const response = await fetch(createUrl(baseUrlWithPath), {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    assert.equal(response.status, 200);
+    const body = await response.json() as { status: string; groupId?: string };
+    if (body.status === 'completed' || body.status === 'failed') {
+      return body;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 180));
+  }
+
+  throw new Error('Timed out waiting for upload job to finish.');
+}
+
 test.before(async () => {
   server = app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
@@ -651,13 +679,16 @@ test('POST /uploads stores the original image and two webp variants', async () =
     body: formData,
   });
   const html = await response.text();
+  assert.equal(response.status, 200);
+  assert.match(html, /View images/);
+  assert.match(html, /Upload Accepted/);
+  const jobId = extractUploadJobId(html);
+  const job = await waitForUploadJob(`/uploads/jobs/${jobId}/status`, token);
+  assert.equal(job.status, 'completed');
+
   const userDirectory = path.join(uploadsRoot, '1');
   const files = fs.readdirSync(userDirectory).sort();
 
-  assert.equal(response.status, 200);
-  assert.match(html, /View images/);
-  assert.match(html, /Open uploaded group/);
-  assert.match(html, /\/images\/1\/groups\/pixel-\d+\/html/);
   assert.equal(files.length, 3);
   assert.ok(files.some(file => /pixel-\d+\.png/.test(file)));
   assert.ok(files.some(file => /75-lossless_pixel-\d+\.webp/.test(file)));
@@ -698,6 +729,16 @@ test('POST /uploads avoids overwrite for repeated uploads and prefixes quality i
 
     assert.equal(firstResponse.status, 200);
     assert.equal(secondResponse.status, 200);
+
+    const firstHtml = await firstResponse.text();
+    const secondHtml = await secondResponse.text();
+    const firstJobId = extractUploadJobId(firstHtml);
+    const secondJobId = extractUploadJobId(secondHtml);
+
+    const firstJob = await waitForUploadJob(`/uploads/jobs/${firstJobId}/status`, token);
+    const secondJob = await waitForUploadJob(`/uploads/jobs/${secondJobId}/status`, token);
+    assert.equal(firstJob.status, 'completed');
+    assert.equal(secondJob.status, 'completed');
 
     const userDirectory = path.join(uploadsRoot, '1');
     const files = fs.readdirSync(userDirectory).sort();
