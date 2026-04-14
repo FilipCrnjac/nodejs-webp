@@ -3,12 +3,16 @@ import express, { Request, Response } from 'express';
 import Auth = require('./../src/auth/auth');
 import Upload = require('./../src/controller/upload');
 import UploadJobService = require('./../src/services/uploadJobService');
+import AuthService = require('./../src/auth/authService');
+import ImageService = require('./../src/services/imageService');
 
 type HttpError = Error & { status?: number };
 
 const router = express.Router();
 const upload = new Upload();
 const uploadJobService = new UploadJobService();
+const authService = new AuthService();
+const imageService = new ImageService();
 
 /* GET uploads index page. */
 router.get('/', function(req: Request, res: Response) {
@@ -46,6 +50,19 @@ router.get('/jobs/:jobId/status', Auth.isAuthenticated, (req: Request, res: Resp
     status: job.status,
     groupId: job.groupId,
     error: job.error,
+  });
+});
+
+router.get('/quota', Auth.isAuthenticated, (req: Request, res: Response) => {
+  const userId = (req as Request & { userId: number }).userId;
+  const quotaBytes = authService.getUserQuotaBytes(userId);
+  const usage = imageService.getUserStorageUsage(userId);
+
+  return res.json({
+    quotaBytes,
+    usedBytes: usage.totalBytes,
+    fileCount: usage.fileCount,
+    remainingBytes: Math.max(0, quotaBytes - usage.totalBytes),
   });
 });
 

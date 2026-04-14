@@ -10,6 +10,7 @@ type UserRecord = {
   id: number;
   username: string;
   passwordHash: string;
+  quotaBytes?: number;
 };
 
 type TokenPayload = {
@@ -22,6 +23,7 @@ type TokenPayload = {
 const jwtSecret = process.env.JWT_SECRET || 'development-secret-change-me';
 const accessTokenTtlSeconds = 60 * 60;
 const refreshTokenTtlSeconds = 60 * 60 * 24 * 7;
+const defaultQuotaBytes = 100 * 1024 * 1024;
 const activeRefreshTokens = new Map<string, number>();
 const revokedAccessTokenIds = new Set<string>();
 
@@ -59,7 +61,7 @@ class AuthService {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const newUserId = Math.max(...this.users.map(u => u.id), 0) + 1;
-    const newUser: UserRecord = { id: newUserId, username, passwordHash };
+    const newUser: UserRecord = { id: newUserId, username, passwordHash, quotaBytes: defaultQuotaBytes };
     this.users.push(newUser);
 
     try {
@@ -126,6 +128,15 @@ class AuthService {
     return { userId };
   }
 
+  getUserQuotaBytes(userId: number): number {
+    const user = this.users.find(candidate => candidate.id === userId);
+    return user?.quotaBytes || defaultQuotaBytes;
+  }
+
+  getDefaultQuotaBytes(): number {
+    return defaultQuotaBytes;
+  }
+
   private issueTokens(userId: number, username: string): LoginResult {
     const accessTokenId = randomUUID();
     const refreshTokenId = randomUUID();
@@ -180,7 +191,10 @@ class AuthService {
     const usersFilePath = resolveUsersFilePath();
     const raw = fsSync.readFileSync(usersFilePath, 'utf8');
     const parsed = JSON.parse(raw) as UserRecord[];
-    return parsed;
+    return parsed.map(user => ({
+      ...user,
+      quotaBytes: user.quotaBytes || defaultQuotaBytes,
+    }));
   }
 }
 

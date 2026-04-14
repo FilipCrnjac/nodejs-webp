@@ -371,6 +371,14 @@ class Upload {
               <strong>💡 Tip:</strong> Your images will be automatically optimized and converted to WebP format in both lossy and lossless variants.
             </div>
 
+            <div id="quotaBox" class="info-box" style="display:none;">
+              <strong>Storage usage</strong>
+              <div id="quotaText" style="margin-top: 6px;">Loading...</div>
+              <div style="margin-top: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; height: 10px;">
+                <div id="quotaBar" style="height: 10px; width: 0%; background: linear-gradient(90deg, #22c55e 0%, #eab308 70%, #ef4444 100%);"></div>
+              </div>
+            </div>
+
           <form id="uploadForm" enctype="multipart/form-data">
               <div class="form-group">
                 <label>Select Image File</label>
@@ -514,9 +522,14 @@ class Upload {
           const lossyQualityValue = document.getElementById('lossyQualityValue');
           const losslessQualityValue = document.getElementById('losslessQualityValue');
           const savingsPreview = document.getElementById('savingsPreview');
+          const quotaBox = document.getElementById('quotaBox');
+          const quotaText = document.getElementById('quotaText');
+          const quotaBar = document.getElementById('quotaBar');
 
           const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
           let currentFileSize = 0;
+
+          loadQuotaUsage();
 
           // Quality slider events
           lossyQuality.addEventListener('input', (e) => {
@@ -692,6 +705,7 @@ class Upload {
 
               if (xhr.status === 200) {
                 showStatus('success', '✅ Image uploaded successfully! Processing with selected quality settings...');
+                loadQuotaUsage();
                 uploadForm.reset();
                 selectedFile.classList.remove('show');
                 previewSection.style.display = 'none';
@@ -746,6 +760,41 @@ class Upload {
           function showStatus(type, message) {
             statusDiv.className = 'status show ' + type;
             statusDiv.innerHTML = message;
+          }
+
+          async function loadQuotaUsage() {
+            const token = localStorage.getItem('access_token') || '';
+            if (!token || !quotaBox || !quotaText || !quotaBar) {
+              return;
+            }
+
+            quotaBox.style.display = 'block';
+            try {
+              const response = await fetch('/uploads/quota', {
+                headers: { Authorization: 'Bearer ' + token }
+              });
+
+              if (!response.ok) {
+                if (response.status === 401) {
+                  const message = getAuthErrorMessage(await response.text()) || 'Please sign in to continue uploading images.';
+                  redirectToLoginWithMessage(message);
+                  return;
+                }
+                quotaText.textContent = 'Unable to load storage usage right now.';
+                return;
+              }
+
+              const body = await response.json();
+              const quotaBytes = Number(body.quotaBytes || 0);
+              const usedBytes = Number(body.usedBytes || 0);
+              const fileCount = Number(body.fileCount || 0);
+              const ratio = quotaBytes > 0 ? Math.min(100, Math.round((usedBytes / quotaBytes) * 100)) : 0;
+
+              quotaText.textContent = formatFileSize(usedBytes) + ' of ' + formatFileSize(quotaBytes) + ' used (' + fileCount + ' files)';
+              quotaBar.style.width = ratio + '%';
+            } catch {
+              quotaText.textContent = 'Unable to load storage usage right now.';
+            }
           }
 
           function formatFileSize(bytes) {

@@ -35,6 +35,11 @@ type PagedResult<T> = {
   sort: GallerySort;
 };
 
+type StorageUsage = {
+  fileCount: number;
+  totalBytes: number;
+};
+
 class ImageService {
   getDirectories(): string[] {
     return FileHelperSync.getDirectories(process.env.UPLOADS_FOLDER!);
@@ -42,6 +47,30 @@ class ImageService {
 
   getDirectoryFiles(folderId: number): string[] {
     return FileHelperSync.getFiles(`${process.env.UPLOADS_FOLDER!}/${folderId}`);
+  }
+
+  getUserStorageUsage(folderId: number): StorageUsage {
+    const folderPath = `${process.env.UPLOADS_FOLDER!}/${folderId}`;
+    if (!fs.existsSync(folderPath)) {
+      return { fileCount: 0, totalBytes: 0 };
+    }
+
+    const files = this.getDirectoryFiles(folderId);
+    let totalBytes = 0;
+
+    files.forEach(name => {
+      const filePath = path.join(folderPath, name);
+      try {
+        totalBytes += fs.statSync(filePath).size;
+      } catch {
+        // Ignore files that disappear between list and stat.
+      }
+    });
+
+    return {
+      fileCount: files.length,
+      totalBytes,
+    };
   }
 
   getDirectoryFilesWithSize(folderId: number): FileWithSize[] {

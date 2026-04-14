@@ -9,6 +9,8 @@ import FileHelperSync = require('./../utils/fileHelperSync');
 import createHttpError = require('./../utils/httpError');
 import ImageAuditService = require('./imageAuditService');
 import UploadJobService = require('./uploadJobService');
+import ImageService = require('./imageService');
+import AuthService = require('./../auth/authService');
 
 type HttpError = Error & { status: number };
 type AuthenticatedUploadRequest = Request & { userId: number; body?: { lossyQuality?: string; losslessQuality?: string } };
@@ -18,6 +20,9 @@ const defaultQuality = 75;
 const maxUploadSizeBytes = 10 * 1024 * 1024;
 const imageAuditService = new ImageAuditService();
 const uploadJobService = new UploadJobService();
+const imageService = new ImageService();
+const authService = new AuthService();
+const projectedVariantMultiplier = 2;
 
 class UploadService {
   async uploadPhoto(req: AuthenticatedUploadRequest, res: Response): Promise<string> {
@@ -74,6 +79,19 @@ class UploadService {
           losslessQuality = Math.max(1, Math.min(100, parseInt(losslessQualityStr, 10) || defaultQuality));
 
           console.log(`📊 Upload quality settings - Lossy: ${lossyQuality}, Lossless: ${losslessQuality}`);
+
+          // Estimate final footprint as original + two generated variants.
+          const usage = imageService.getUserStorageUsage(userId);
+          const quotaBytes = authService.getUserQuotaBytes(userId);
+          const projectedTotalBytes = usage.totalBytes + (req.file.size * projectedVariantMultiplier);
+          if (projectedTotalBytes > quotaBytes) {
+            cleanupUploadArtifacts(req.file.path, [lossyQuality, losslessQuality]);
+            return reject(createHttpError(
+              413,
+              `Storage quota exceeded. Used ${formatFileSize(usage.totalBytes)} of ${formatFileSize(quotaBytes)}.`
+            ));
+          }
+
           const job = uploadJobService.createJob({
             userId,
             originalFileName: req.file.originalname,
@@ -544,6 +562,17 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const kb = bytes / 1024;
+  if (kb < 1024) {
+    return `${kb.toFixed(1)} KB`;
+  }
+  return `${(kb / 1024).toFixed(2)} MB`;
 }
 
 export = UploadService;

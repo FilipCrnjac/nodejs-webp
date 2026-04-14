@@ -435,6 +435,14 @@ router.get('/', function(req: Request, res: Response) {
             <strong>Sign in required:</strong> Upload is enabled after you sign in from the <strong>Account</strong> tab.
           </div>
 
+          <div id="upload-quota-box" class="info-box" style="display: none;">
+            <strong>Storage usage:</strong>
+            <div id="upload-quota-text" style="margin-top: 6px; color: #374151;">Loading...</div>
+            <div style="margin-top: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; height: 10px;">
+              <div id="upload-quota-bar" style="height: 10px; width: 0%; background: linear-gradient(90deg, #22c55e 0%, #eab308 70%, #ef4444 100%);"></div>
+            </div>
+          </div>
+
           <div style="margin-top: 30px;">
             <form id="home-upload-form" action="/uploads" method="POST" enctype="multipart/form-data">
               <div style="margin-bottom: 20px;">
@@ -758,9 +766,14 @@ router.get('/', function(req: Request, res: Response) {
           const lossyQualityInput = document.getElementById('home-lossy-quality');
           const losslessQualityInput = document.getElementById('home-lossless-quality');
           const status = document.getElementById('upload-status');
+          const quotaBox = document.getElementById('upload-quota-box');
 
           if (note) {
             note.style.display = hasToken ? 'none' : 'block';
+          }
+
+          if (quotaBox) {
+            quotaBox.style.display = hasToken ? 'block' : 'none';
           }
 
           if (fileInput) {
@@ -790,6 +803,55 @@ router.get('/', function(req: Request, res: Response) {
           if (status && !hasToken) {
             status.style.display = 'none';
             status.textContent = '';
+          }
+
+          if (hasToken) {
+            fetchUploadQuota();
+          }
+        }
+
+        function formatBytes(bytes) {
+          const value = Number(bytes || 0);
+          if (value < 1024) return value + ' B';
+          const kb = value / 1024;
+          if (kb < 1024) return kb.toFixed(1) + ' KB';
+          return (kb / 1024).toFixed(2) + ' MB';
+        }
+
+        async function fetchUploadQuota() {
+          const token = localStorage.getItem('access_token') || '';
+          if (!hasUsableAccessToken(token)) {
+            return;
+          }
+
+          const textEl = document.getElementById('upload-quota-text');
+          const barEl = document.getElementById('upload-quota-bar');
+          if (!textEl || !barEl) {
+            return;
+          }
+
+          try {
+            const response = await fetch('/uploads/quota', {
+              headers: { Authorization: 'Bearer ' + token }
+            });
+            if (!response.ok) {
+              if (await handleAuthErrorRedirect(response, 'Please sign in again to continue uploading.')) {
+                return;
+              }
+              textEl.textContent = 'Unable to load storage usage right now.';
+              return;
+            }
+
+            const body = await response.json();
+            const quotaBytes = Number(body.quotaBytes || 0);
+            const usedBytes = Number(body.usedBytes || 0);
+            const fileCount = Number(body.fileCount || 0);
+            const ratio = quotaBytes > 0 ? Math.min(100, Math.round((usedBytes / quotaBytes) * 100)) : 0;
+
+            textEl.textContent = formatBytes(usedBytes) + ' of ' + formatBytes(quotaBytes) + ' used (' + fileCount + ' files)';
+            barEl.style.width = ratio + '%';
+          } catch {
+            textEl.textContent = 'Unable to load storage usage right now.';
           }
         }
 

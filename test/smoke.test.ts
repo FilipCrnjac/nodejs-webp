@@ -666,6 +666,25 @@ test('POST /uploads rejects unsupported file types before saving', async () => {
   assert.deepEqual(fs.readdirSync(userDirectory), []);
 });
 
+test('GET /uploads/quota returns quota and current storage usage for authenticated user', async () => {
+  fs.mkdirSync(path.join(uploadsRoot, '1'), { recursive: true });
+  fs.writeFileSync(path.join(uploadsRoot, '1', 'sample.jpeg'), 'demo');
+
+  const { token } = await login('user1', 'password1');
+  const response = await fetch(createUrl('/uploads/quota'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const body = await response.json() as { quotaBytes: number; usedBytes: number; fileCount: number; remainingBytes: number };
+
+  assert.equal(response.status, 200);
+  assert.ok(body.quotaBytes > 0);
+  assert.ok(body.usedBytes >= 4);
+  assert.equal(body.fileCount, 1);
+  assert.ok(body.remainingBytes >= 0);
+});
+
 test('POST /uploads stores the original image and two webp variants', async () => {
   const { token } = await login('user1', 'password1');
   const formData = new FormData();
