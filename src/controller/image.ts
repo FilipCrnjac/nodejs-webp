@@ -28,7 +28,7 @@ class Image {
       const escapedFileName = escapeHtml(file.name);
       const escapedFileUrl = escapeHtml(fileUrl);
       imagesHtml += `
-        <figure class="image-card">
+        <figure class="image-card" data-page-item="true" data-image-name="${escapeHtml(file.name.toLowerCase())}">
           <div class="image-wrapper" data-image-url="${escapedFileUrl}" data-image-name="${escapedFileName}" onclick="openLightboxFromCard(this)" onkeydown="handleImageCardKeydown(event, this)" role="button" tabindex="0" aria-label="Open ${escapedFileName}">
             <img src="${fileUrl}" alt="${escapedFileName}" onload="doneLoading(${JSON.stringify(file.name)})" title="Click to enlarge">
             <div class="image-overlay">
@@ -119,6 +119,33 @@ class Image {
             box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
           }
 
+          .view-toggle {
+            display: inline-flex;
+            border: 1px solid #dbe2ff;
+            border-radius: 999px;
+            overflow: hidden;
+            background: #f7f8ff;
+          }
+
+          .view-toggle-link {
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #4b5563;
+            text-decoration: none;
+            letter-spacing: 0.2px;
+          }
+
+          .view-toggle-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+          }
+
+          .view-toggle-link:not(.active):hover {
+            background: #e9edff;
+            color: #374151;
+          }
+
           .gallery {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -127,6 +154,92 @@ class Image {
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          }
+
+          .gallery-toolbar {
+            margin-bottom: 14px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+          }
+
+          .gallery-search {
+            flex: 1;
+            min-width: 220px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+          }
+
+          .gallery-search:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+          }
+
+          .clear-search-btn {
+            border: none;
+            border-radius: 8px;
+            background: #eef0f9;
+            color: #374151;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 12px;
+            cursor: pointer;
+          }
+
+          .pagination {
+            margin-top: 16px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+
+          .pagination.hidden {
+            display: none;
+          }
+
+          .pagination-meta {
+            color: #666;
+            font-size: 13px;
+          }
+
+          .pagination-actions {
+            display: flex;
+            gap: 8px;
+          }
+
+          .pagination-btn {
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #eef0f9;
+            color: #374151;
+          }
+
+          .pagination-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+          }
+
+          .pagination-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
           }
 
           .gallery.empty {
@@ -435,6 +548,15 @@ class Image {
             <a href="/" class="back-link">← Back to App</a>
           </div>
 
+          <div class="gallery-toolbar">
+            <div class="view-toggle" role="tablist" aria-label="Gallery view mode">
+              <a href="/images/${folderId}/html" class="view-toggle-link active" role="tab" aria-selected="true">All Images</a>
+              <a href="/images/${folderId}/grouped/html" class="view-toggle-link" role="tab" aria-selected="false">Grouped</a>
+            </div>
+            <input id="gallery-search-input" class="gallery-search" type="search" placeholder="Search by image name..." aria-label="Search images by file name">
+            <button id="gallery-search-clear" class="clear-search-btn" type="button">Clear</button>
+          </div>
+
           <div id="gallery-container" class="gallery${imagesHtml.trim() === '' ? ' empty' : ''}">
             ${imagesHtml.trim() === '' ? `
               <div class="empty-state">
@@ -448,6 +570,13 @@ class Image {
                 <a href="/">Go to Upload</a>
               </div>
             ` : imagesHtml}
+          </div>
+          <div id="gallery-pagination" class="pagination hidden">
+            <div id="gallery-pagination-meta" class="pagination-meta"></div>
+            <div class="pagination-actions">
+              <button id="gallery-prev-btn" class="pagination-btn" type="button">Previous</button>
+              <button id="gallery-next-btn" class="pagination-btn" type="button">Next</button>
+            </div>
           </div>
         </div>
 
@@ -467,12 +596,88 @@ class Image {
 
         <script>
           const startTime = new Date().getTime();
+          const PAGE_SIZE = 9;
+          let currentPage = 1;
+          let totalPages = 1;
+          let currentFilterQuery = '';
           let currentGroupImages = [];
           let currentGroupIndex = 0;
           
           function doneLoading(name) {
             let loadTime = new Date().getTime() - startTime;
             console.log("Image [" + name + "] took " + loadTime + "ms to load");
+          }
+
+          function getGalleryItems() {
+            return Array.from(document.querySelectorAll('[data-page-item="true"]'));
+          }
+
+          function renderPagination() {
+            const allItems = getGalleryItems();
+            const items = allItems.filter(item => {
+              const imageName = (item.dataset.imageName || '').toLowerCase();
+              const matches = !currentFilterQuery || imageName.includes(currentFilterQuery);
+              if (!matches) {
+                item.style.display = 'none';
+              }
+              return matches;
+            });
+
+            const paginationContainer = document.getElementById('gallery-pagination');
+            const meta = document.getElementById('gallery-pagination-meta');
+            const prevBtn = document.getElementById('gallery-prev-btn');
+            const nextBtn = document.getElementById('gallery-next-btn');
+
+            if (!paginationContainer || !meta || !prevBtn || !nextBtn) {
+              return;
+            }
+
+            if (!items.length) {
+              paginationContainer.classList.add('hidden');
+              meta.textContent = 'No images match your search.';
+              allItems.forEach(item => {
+                if (item.style.display !== 'none') {
+                  item.style.display = '';
+                }
+              });
+              return;
+            }
+
+            if (items.length <= PAGE_SIZE) {
+              paginationContainer.classList.add('hidden');
+              items.forEach(item => {
+                item.style.display = '';
+              });
+              return;
+            }
+
+            totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+            if (currentPage > totalPages) {
+              currentPage = totalPages;
+            }
+
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const end = start + PAGE_SIZE;
+            items.forEach((item, index) => {
+              item.style.display = index >= start && index < end ? '' : 'none';
+            });
+
+            meta.textContent = 'Page ' + currentPage + ' of ' + totalPages + ' (' + items.length + ' matching images)';
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+            paginationContainer.classList.remove('hidden');
+          }
+
+          function changePage(nextPage) {
+            currentPage = Math.max(1, Math.min(nextPage, totalPages));
+            renderPagination();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+
+          function applyImageSearch(query) {
+            currentFilterQuery = String(query || '').trim().toLowerCase();
+            currentPage = 1;
+            renderPagination();
           }
 
           function openLightboxFromCard(card) {
@@ -629,6 +834,33 @@ class Image {
               showPrevImage();
             }
           }, { passive: false });
+
+          const prevBtn = document.getElementById('gallery-prev-btn');
+          const nextBtn = document.getElementById('gallery-next-btn');
+          if (prevBtn) {
+            prevBtn.addEventListener('click', () => changePage(currentPage - 1));
+          }
+          if (nextBtn) {
+            nextBtn.addEventListener('click', () => changePage(currentPage + 1));
+          }
+
+          const searchInput = document.getElementById('gallery-search-input');
+          const clearSearchButton = document.getElementById('gallery-search-clear');
+          if (searchInput) {
+            searchInput.addEventListener('input', event => {
+              applyImageSearch(event.target.value || '');
+            });
+          }
+          if (clearSearchButton) {
+            clearSearchButton.addEventListener('click', () => {
+              if (searchInput) {
+                searchInput.value = '';
+              }
+              applyImageSearch('');
+            });
+          }
+
+          renderPagination();
         </script>
       </body>
       </html>`;
@@ -855,6 +1087,34 @@ class Image {
             font-weight: 600;
             padding: 10px 12px;
             cursor: pointer;
+          }
+
+          .view-toggle {
+            display: inline-flex;
+            border: 1px solid #dbe2ff;
+            border-radius: 999px;
+            overflow: hidden;
+            background: #f7f8ff;
+          }
+
+          .view-toggle-link {
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #4b5563;
+            text-decoration: none;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+          }
+
+          .view-toggle-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+          }
+
+          .view-toggle-link:not(.active):hover {
+            background: #e9edff;
+            color: #374151;
           }
 
           .pagination {
@@ -1290,6 +1550,10 @@ class Image {
           </div>
 
           <div class="gallery-toolbar">
+            <div class="view-toggle" role="tablist" aria-label="Gallery view mode">
+              <a href="/images/${folderId}/html" class="view-toggle-link" role="tab" aria-selected="false">All Images</a>
+              <a href="/images/${folderId}/grouped/html" class="view-toggle-link active" role="tab" aria-selected="true">Grouped</a>
+            </div>
             <input id="gallery-search-input" class="gallery-search" type="search" placeholder="Search by image name..." aria-label="Search groups by image name">
             <button id="gallery-search-clear" class="clear-search-btn" type="button">Clear</button>
           </div>

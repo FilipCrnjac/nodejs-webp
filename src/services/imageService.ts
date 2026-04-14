@@ -5,6 +5,7 @@ import path from 'path';
 type FileWithSize = {
   name: string;
   sizeBytes: number;
+  uploadedAtMs: number;
 };
 
 type ImageGroup = {
@@ -12,6 +13,7 @@ type ImageGroup = {
   original: FileWithSize | null;
   variants: FileWithSize[];
   totalSize: number;
+  uploadedAtMs: number;
 };
 
 class ImageService {
@@ -33,8 +35,10 @@ class ImageService {
       return {
         name,
         sizeBytes: stats.size,
+        // Upload writes each file once, so mtimeMs acts as a stable uploaded-at timestamp.
+        uploadedAtMs: stats.mtimeMs,
       };
-    });
+    }).sort((a, b) => b.uploadedAtMs - a.uploadedAtMs);
   }
 
   getImageGroups(folderId: number): ImageGroup[] {
@@ -50,14 +54,17 @@ class ImageService {
           original: null,
           variants: [],
           totalSize: 0,
+          uploadedAtMs: file.uploadedAtMs,
         });
       }
 
       const group = groups.get(originalName)!;
       group.totalSize += file.sizeBytes;
+      group.uploadedAtMs = Math.max(group.uploadedAtMs, file.uploadedAtMs);
 
       if (this.isOriginalImage(file.name, originalName)) {
         group.original = file;
+        group.uploadedAtMs = file.uploadedAtMs;
       } else {
         group.variants.push(file);
       }
@@ -65,7 +72,7 @@ class ImageService {
 
     return Array.from(groups.values())
       .filter(g => g.original !== null)
-      .sort((a, b) => b.totalSize - a.totalSize);
+      .sort((a, b) => b.uploadedAtMs - a.uploadedAtMs);
   }
 
   private extractOriginalFileName(fileName: string): string {

@@ -393,6 +393,54 @@ test('GET /images/:id/grouped/html includes pagination controls when many groups
   assert.match(html, /Page '\s*\+ currentPage \+ '\s*of/);
 });
 
+test('GET /images/:id/html orders images by uploaded time (newest first)', async () => {
+  const folderPath = path.join(uploadsRoot, '13');
+  fs.mkdirSync(folderPath, { recursive: true });
+  const olderFile = path.join(folderPath, 'older.jpeg');
+  const newerFile = path.join(folderPath, 'newer.jpeg');
+  fs.writeFileSync(olderFile, 'old');
+  fs.writeFileSync(newerFile, 'new');
+
+  const now = Date.now();
+  fs.utimesSync(olderFile, new Date(now - 20_000), new Date(now - 20_000));
+  fs.utimesSync(newerFile, new Date(now), new Date(now));
+
+  const { token } = await login('user13', 'password13');
+  const response = await fetch(createUrl('/images/13/html'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.ok(html.indexOf('newer.jpeg') < html.indexOf('older.jpeg'));
+});
+
+test('GET /images/:id/grouped/html orders groups by uploaded time (newest first)', async () => {
+  const folderPath = path.join(uploadsRoot, '13');
+  fs.mkdirSync(folderPath, { recursive: true });
+  const olderOriginal = path.join(folderPath, 'older-group.jpeg');
+  const newerOriginal = path.join(folderPath, 'newer-group.jpeg');
+  fs.writeFileSync(olderOriginal, 'old-group');
+  fs.writeFileSync(newerOriginal, 'new-group');
+
+  const now = Date.now();
+  fs.utimesSync(olderOriginal, new Date(now - 20_000), new Date(now - 20_000));
+  fs.utimesSync(newerOriginal, new Date(now), new Date(now));
+
+  const { token } = await login('user13', 'password13');
+  const response = await fetch(createUrl('/images/13/grouped/html'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.ok(html.indexOf('newer-group.jpeg') < html.indexOf('older-group.jpeg'));
+});
+
 test('GET /images/:id/grouped/html includes group search controls', async () => {
   const folderPath = path.join(uploadsRoot, '13');
   fs.mkdirSync(folderPath, { recursive: true });
@@ -411,6 +459,9 @@ test('GET /images/:id/grouped/html includes group search controls', async () => 
   assert.equal(response.status, 200);
   assert.match(html, /id="gallery-search-input"/);
   assert.match(html, /id="gallery-search-clear"/);
+  assert.match(html, /aria-label="Gallery view mode"/);
+  assert.match(html, /href="\/images\/13\/html"/);
+  assert.match(html, /href="\/images\/13\/grouped\/html"/);
   assert.match(html, /Total group size:/);
   assert.match(html, /Original<\/span><strong>/);
   assert.match(html, /Lossy/);
@@ -422,6 +473,30 @@ test('GET /images/:id/grouped/html includes group search controls', async () => 
   assert.match(html, /zip-btn/);
   assert.match(html, /delete-group-btn/);
   assert.match(html, /ondblclick="openGroupFromCard\(event, this\)"/);
+});
+
+test('GET /images/:id/html includes grouped toggle link', async () => {
+  const folderPath = path.join(uploadsRoot, '13');
+  fs.mkdirSync(folderPath, { recursive: true });
+  fs.writeFileSync(path.join(folderPath, 'cover.jpeg'), 'demo-cover');
+
+  const { token } = await login('user13', 'password13');
+  const response = await fetch(createUrl('/images/13/html'), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /aria-label="Gallery view mode"/);
+  assert.match(html, /href="\/images\/13\/html"/);
+  assert.match(html, /href="\/images\/13\/grouped\/html"/);
+  assert.match(html, /id="gallery-search-input"/);
+  assert.match(html, /id="gallery-search-clear"/);
+  assert.match(html, /id="gallery-pagination"/);
+  assert.match(html, /id="gallery-prev-btn"/);
+  assert.match(html, /id="gallery-next-btn"/);
 });
 
 test('POST /uploads rejects unsupported file types before saving', async () => {
