@@ -4,6 +4,7 @@ const webp = require('imagemin-webp');
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import sharp from 'sharp';
 
 import FileHelperSync = require('./../utils/fileHelperSync');
 
@@ -36,6 +37,31 @@ class Webp {
   }
 }
 
+/**
+ * Auto-orient an image using EXIF orientation metadata so that the WebP
+ * output is always upright regardless of camera rotation.
+ * Returns the path to use for conversion (original if already upright,
+ * or a temporary corrected copy otherwise).
+ */
+async function autoOrient(inputImage: string, tempDir: string): Promise<{ path: string; isTemp: boolean }> {
+  try {
+    const metadata = await sharp(inputImage).metadata();
+    // orientation 1 (or absent) means already upright – skip costly re-encode
+    if (!metadata.orientation || metadata.orientation === 1) {
+      return { path: inputImage, isTemp: false };
+    }
+
+    const parsedPath = path.parse(inputImage);
+    const orientedPath = path.join(tempDir, `oriented_${parsedPath.base}`);
+    // .rotate() with no argument applies EXIF rotation and strips the tag
+    await sharp(inputImage).rotate().toFile(orientedPath);
+    return { path: orientedPath, isTemp: true };
+  } catch {
+    // If EXIF read fails, proceed with the original
+    return { path: inputImage, isTemp: false };
+  }
+}
+
 async function convert(
   inputImage: string,
   destination: string,
@@ -48,7 +74,11 @@ async function convert(
   try {
     console.log(`convert${capitalize(label)} started (${inputImage})`);
     const startTime = process.hrtime();
-    const result = await imagemin([inputImage], {
+
+    // Normalize EXIF rotation before WebP conversion so the output is upright
+    const oriented = await autoOrient(inputImage, tempDestination);
+
+    const result = await imagemin([oriented.path], {
       destination: tempDestination,
       plugins: [
         webp(pluginOptions)
@@ -60,6 +90,7 @@ async function convert(
       throw new Error(`Converted ${label} image is missing output path.`);
     }
 
+    // Always base the output filename on the *original* input, not the temp oriented copy
     const parsedPath = path.parse(inputImage);
     const outputPath = path.join(destination, Webp.buildVariantFileName(`${parsedPath.name}${parsedPath.ext}`, quality, label as 'lossy' | 'lossless'));
     FileHelperSync.rename(result[0].destinationPath, outputPath);
