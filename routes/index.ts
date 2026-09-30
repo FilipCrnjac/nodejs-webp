@@ -57,7 +57,7 @@ router.get('/', function(req: Request, res: Response) {
 
         .main-layout {
           display: grid;
-          grid-template-columns: 220px 1fr;
+          grid-template-columns: 220px minmax(0, 1fr);
           min-height: 560px;
         }
 
@@ -99,11 +99,21 @@ router.get('/', function(req: Request, res: Response) {
           padding: 40px 30px;
           display: none;
           animation: fadeIn 0.3s ease;
+          min-width: 0;
         }
 
         .tab-panels {
           min-height: 560px;
           background: #fff;
+          min-width: 0;
+        }
+
+        .content pre {
+          max-width: 100%;
+          overflow-x: auto;
+          white-space: pre-wrap;
+          word-break: break-word;
+          overflow-wrap: anywhere;
         }
 
         .content.active {
@@ -409,7 +419,6 @@ router.get('/', function(req: Request, res: Response) {
           </p>
           <button class="cta-button" onclick="switchTab(event, 'login')">Go to Account →</button>
         </div>
-        </div>
 
         <!-- LOGIN/REGISTER TAB -->
         <div id="login" class="content">
@@ -527,6 +536,7 @@ router.get('/', function(req: Request, res: Response) {
           </p>
         </div>
         </div>
+      </div>
 
         <div class="footer">
           <p>© 2026 Image Upload Studio. All images are securely stored and optimized.</p>
