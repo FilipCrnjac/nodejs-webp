@@ -162,6 +162,14 @@ router.get('/', function(req: Request, res: Response) {
           box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
+        .cta-button:disabled {
+          background: #bdbdbd;
+          color: #f5f5f5;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+
         .status {
           display: inline-block;
           padding: 8px 12px;
@@ -511,7 +519,7 @@ router.get('/', function(req: Request, res: Response) {
                 </div>
               </div>
 
-              <button id="home-upload-submit" type="submit" class="cta-button" style="width: 100%; text-align: center;">Upload & Optimize</button>
+              <button id="home-upload-submit" type="submit" class="cta-button" disabled style="width: 100%; text-align: center;">Upload & Optimize</button>
             </form>
             <p id="upload-status" style="display: none; margin-top: 12px; font-size: 14px;"></p>
           </div>
@@ -797,7 +805,6 @@ router.get('/', function(req: Request, res: Response) {
           const note = document.getElementById('upload-login-note');
           const fileInput = document.getElementById('home-upload-file');
           const dropzone = document.getElementById('home-upload-dropzone');
-          const submitButton = document.getElementById('home-upload-submit');
           const lossyQualityInput = document.getElementById('home-lossy-quality');
           const losslessQualityInput = document.getElementById('home-lossless-quality');
           const lossyQualityNumberInput = document.getElementById('home-lossy-quality-number');
@@ -823,11 +830,7 @@ router.get('/', function(req: Request, res: Response) {
             dropzone.setAttribute('aria-disabled', hasToken ? 'false' : 'true');
           }
 
-          if (submitButton) {
-            submitButton.disabled = !hasToken;
-            submitButton.style.opacity = hasToken ? '1' : '0.6';
-            submitButton.style.cursor = hasToken ? 'pointer' : 'not-allowed';
-          }
+          updateHomeUploadSubmitState();
 
           if (lossyQualityInput) {
             lossyQualityInput.disabled = !hasToken;
@@ -853,6 +856,20 @@ router.get('/', function(req: Request, res: Response) {
           if (hasToken) {
             fetchUploadQuota();
           }
+        }
+
+        let homeUploadInProgress = false;
+
+        function updateHomeUploadSubmitState() {
+          const submitButton = document.getElementById('home-upload-submit');
+          const fileInput = document.getElementById('home-upload-file');
+          if (!submitButton) {
+            return;
+          }
+
+          const hasToken = hasUsableAccessToken(localStorage.getItem('access_token') || '');
+          const hasFile = Boolean(fileInput && fileInput.files && fileInput.files.length > 0);
+          submitButton.disabled = !hasToken || !hasFile || homeUploadInProgress;
         }
 
         function formatBytes(bytes) {
@@ -992,12 +1009,14 @@ router.get('/', function(req: Request, res: Response) {
 
             fileInput.files = event.dataTransfer.files;
             showPreview(file);
+            updateHomeUploadSubmitState();
             dropzone.querySelector('.upload-dropzone-title').textContent = file.name;
           });
 
           fileInput.addEventListener('change', () => {
             const file = fileInput.files?.[0];
             showPreview(file);
+            updateHomeUploadSubmitState();
             const title = dropzone.querySelector('.upload-dropzone-title');
             if (title) {
               title.textContent = file ? file.name : 'Click or drag and drop image here';
@@ -1111,7 +1130,8 @@ router.get('/', function(req: Request, res: Response) {
             return;
           }
 
-          submitButton.disabled = true;
+          homeUploadInProgress = true;
+          updateHomeUploadSubmitState();
           status.style.display = 'block';
           status.style.color = '#666';
           status.textContent = 'Uploading...';
@@ -1155,7 +1175,8 @@ router.get('/', function(req: Request, res: Response) {
             status.style.color = '#c62828';
             status.textContent = 'Upload failed due to a network error.';
           } finally {
-            submitButton.disabled = false;
+            homeUploadInProgress = false;
+            updateHomeUploadSubmitState();
           }
         }
 
