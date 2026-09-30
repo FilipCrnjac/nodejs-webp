@@ -1114,6 +1114,8 @@ class Image {
       const losslessSize = losslessVariant ? formatFileSize(losslessVariant.sizeBytes) : '—';
       const lossyCompression = lossyVariant ? formatCompressionSummary(group.original.sizeBytes, lossyVariant.sizeBytes) : '';
       const losslessCompression = losslessVariant ? formatCompressionSummary(group.original.sizeBytes, losslessVariant.sizeBytes) : '';
+      const lossyCompressionClass = lossyVariant ? compressionClassName(group.original.sizeBytes, lossyVariant.sizeBytes) : '';
+      const losslessCompressionClass = losslessVariant ? compressionClassName(group.original.sizeBytes, losslessVariant.sizeBytes) : '';
 
       const lossyVariantUrl = lossyVariant ? `/images/${folderId}/files/${encodeURIComponent(lossyVariant.name)}` : '';
       const losslessVariantUrl = losslessVariant ? `/images/${folderId}/files/${encodeURIComponent(losslessVariant.name)}` : '';
@@ -1149,8 +1151,8 @@ class Image {
             <div class="image-size group-total-size">Total group size: ${formatFileSize(group.totalSize)}</div>
             <div class="group-size-breakdown">
               <div class="group-size-item"><span>Original</span><strong>${originalSize}</strong></div>
-              <div class="group-size-item"><span>Lossy ${lossyCompression ? `<em class="compression-chip compression-lossy">${lossyCompression}</em>` : ''}</span><strong>${lossySize}</strong></div>
-              <div class="group-size-item"><span>Lossless ${losslessCompression ? `<em class="compression-chip compression-lossless">${losslessCompression}</em>` : ''}</span><strong>${losslessSize}</strong></div>
+              <div class="group-size-item"><span>Lossy ${lossyCompression ? `<em class="compression-chip ${lossyCompressionClass}">${lossyCompression}</em>` : ''}</span><strong>${lossySize}</strong></div>
+              <div class="group-size-item"><span>Lossless ${losslessCompression ? `<em class="compression-chip ${losslessCompressionClass}">${losslessCompression}</em>` : ''}</span><strong>${losslessSize}</strong></div>
             </div>
             <div class="group-actions">
               <a href="${shareLink}" class="group-action-btn view-group-btn" title="Open this group details page" data-label="View group" aria-label="View group">
@@ -1651,12 +1653,16 @@ class Image {
             font-weight: 700;
           }
 
-          .compression-lossy {
+          .compression-smaller {
             color: #15803d;
           }
 
-          .compression-lossless {
+          .compression-larger {
             color: #b91c1c;
+          }
+
+          .compression-unchanged {
+            color: #6b7280;
           }
 
 
@@ -2356,14 +2362,14 @@ class Image {
         variant: lossyVariant,
         emptyText: 'No lossy variant',
         compressionText: lossyVariant ? formatCompressionSummary(group.original.sizeBytes, lossyVariant.sizeBytes) : '',
-        compressionClass: 'compression-lossy',
+        compressionClass: lossyVariant ? compressionClassName(group.original.sizeBytes, lossyVariant.sizeBytes) : '',
       },
       {
         label: 'Lossless',
         variant: losslessVariant,
         emptyText: 'No lossless variant',
         compressionText: losslessVariant ? formatCompressionSummary(group.original.sizeBytes, losslessVariant.sizeBytes) : '',
-        compressionClass: 'compression-lossless',
+        compressionClass: losslessVariant ? compressionClassName(group.original.sizeBytes, losslessVariant.sizeBytes) : '',
       },
     ].map(item => {
       if (!item.variant) {
@@ -2539,12 +2545,16 @@ class Image {
             font-weight: 700;
           }
 
-          .compression-lossy {
+          .compression-smaller {
             color: #15803d;
           }
 
-          .compression-lossless {
+          .compression-larger {
             color: #b91c1c;
+          }
+
+          .compression-unchanged {
+            color: #6b7280;
           }
 
           .image-set-preview {
@@ -2795,6 +2805,14 @@ function formatCompressionPercent(originalBytes: number, variantBytes: number): 
 
   const percent = Math.round(((originalBytes - variantBytes) / originalBytes) * 100);
   return `${percent}%`;
+}
+
+function compressionClassName(originalBytes: number, variantBytes: number): string {
+  if (variantBytes < originalBytes) {
+    return 'compression-smaller';
+  }
+
+  return variantBytes > originalBytes ? 'compression-larger' : 'compression-unchanged';
 }
 
 function formatCompressionSummary(originalBytes: number, variantBytes: number): string {
