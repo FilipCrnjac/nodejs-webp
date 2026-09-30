@@ -1,6 +1,3 @@
-const imagemin = require('imagemin');
-const webp = require('imagemin-webp');
-
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -11,10 +8,6 @@ import FileHelperSync = require('./../utils/fileHelperSync');
 type WebpPluginOptions = {
   quality: number;
   lossless?: boolean;
-};
-
-type ImageminResult = {
-  destinationPath?: string;
 };
 
 class Webp {
@@ -78,22 +71,17 @@ async function convert(
     // Normalize EXIF rotation before WebP conversion so the output is upright
     const oriented = await autoOrient(inputImage, tempDestination);
 
-    const result = await imagemin([oriented.path], {
-      destination: tempDestination,
-      plugins: [
-        webp(pluginOptions)
-      ]
-    }) as ImageminResult[];
-    logExecutionTime(startTime, `${capitalize(label)} (${inputImage})`);
-
-    if (!result[0] || !result[0].destinationPath) {
-      throw new Error(`Converted ${label} image is missing output path.`);
-    }
-
     // Always base the output filename on the *original* input, not the temp oriented copy
     const parsedPath = path.parse(inputImage);
+    const tempOutputPath = path.join(tempDestination, `${parsedPath.name}.webp`);
+    // animated: true keeps all frames of animated GIFs
+    await sharp(oriented.path, { animated: true })
+      .webp(pluginOptions)
+      .toFile(tempOutputPath);
+    logExecutionTime(startTime, `${capitalize(label)} (${inputImage})`);
+
     const outputPath = path.join(destination, Webp.buildVariantFileName(`${parsedPath.name}${parsedPath.ext}`, quality, label as 'lossy' | 'lossless'));
-    FileHelperSync.rename(result[0].destinationPath, outputPath);
+    FileHelperSync.rename(tempOutputPath, outputPath);
 
     return outputPath;
   } catch (e) {
