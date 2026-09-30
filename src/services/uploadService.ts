@@ -382,7 +382,7 @@ class UploadService {
                       </div>
                     </div>
 
-                    <div class="info-box">
+                    <div id="job-progress-note" class="info-box">
                       <strong>In progress:</strong> processing runs in the background. This page checks status automatically.
                     </div>
 
@@ -415,12 +415,14 @@ class UploadService {
               <script>
                 const statusBox = document.getElementById('job-status');
                 const openGroupBtn = document.getElementById('open-group-btn');
+                const progressNote = document.getElementById('job-progress-note');
 
                 async function pollJobStatus() {
                   try {
                     const response = await fetch('/uploads/jobs/${job.id}/status', { credentials: 'same-origin' });
                     if (!response.ok) {
                       statusBox.innerHTML = '<strong>Status:</strong> failed to fetch processing status';
+                      progressNote.innerHTML = '<strong>Unknown:</strong> status checks stopped. Refresh the page to check again.';
                       return;
                     }
 
@@ -432,17 +434,20 @@ class UploadService {
                       openGroupBtn.href = groupLink;
                       openGroupBtn.style.display = '';
                       statusBox.innerHTML = '<strong>Status:</strong> completed';
+                      progressNote.innerHTML = '<strong>Done:</strong> WebP variants are ready. Open the uploaded group to compare results.';
                       return;
                     }
 
                     if (body.status === 'failed') {
                       statusBox.innerHTML = '<strong>Status:</strong> failed (' + (body.error || 'conversion error') + ')';
+                      progressNote.innerHTML = '<strong>Failed:</strong> processing did not complete. Try uploading the image again.';
                       return;
                     }
 
                     setTimeout(pollJobStatus, 1200);
                   } catch {
                     statusBox.innerHTML = '<strong>Status:</strong> network error while polling';
+                    progressNote.innerHTML = '<strong>Unknown:</strong> status checks stopped. Refresh the page to check again.';
                   }
                 }
 
